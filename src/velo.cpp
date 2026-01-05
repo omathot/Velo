@@ -14,27 +14,27 @@ module;
 #include <utility>
 
 
-module vorn;
+module velo;
 // import std;
 import vulkan_hpp;
 
-Vorn::Vorn() {
-	std::cout << "Constructing Vorn\n";
+Velo::Velo() {
+	std::cout << "Constructing Velo\n";
 }
 
-Vorn::~Vorn() {
-	std::cout << "Destructing Vorn\n";
+Velo::~Velo() {
+	std::cout << "Destructing Velo\n";
 
 }
 
-void Vorn::run() {
+void Velo::run() {
 	init_window();
 	init_vulkan();
 	main_loop();
 	cleanup();
 }
 
-void Vorn::init_vulkan() {
+void Velo::init_vulkan() {
 	create_instance();
 	setup_debug_messenger();
 	create_surface();
@@ -55,7 +55,7 @@ void Vorn::init_vulkan() {
 	create_sync_objects();
 }
 
-void Vorn::main_loop() {
+void Velo::main_loop() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		draw_frame();
@@ -63,7 +63,7 @@ void Vorn::main_loop() {
 	device.waitIdle();
 }
 
-void Vorn::cleanup() {
+void Velo::cleanup() {
 	cleanup_swapchain();
 
 	// VMA allocator being destroyed before vertexBuff
@@ -83,7 +83,7 @@ void Vorn::cleanup() {
 	glfwTerminate();
 }
 
-void Vorn::record_command_buffer(uint32_t imgIdx) {
+void Velo::record_command_buffer(uint32_t imgIdx) {
 	auto& cmdBuffer = cmdBuffers[frameIdx];
 	cmdBuffer.begin({});
 	transition_image_layout(
@@ -134,7 +134,7 @@ void Vorn::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.end();
 }
 
-void Vorn::transition_image_layout(
+void Velo::transition_image_layout(
 		uint32_t imgIdx,
 		vk::ImageLayout oldLayout,
 		vk::ImageLayout newLayout,
@@ -169,7 +169,7 @@ void Vorn::transition_image_layout(
 	cmdBuffers[frameIdx].pipelineBarrier2(depInfo);
 }
 
-void Vorn::draw_frame() {
+void Velo::draw_frame() {
 	uint64_t timelineValue = ++frameCount;
 	frameIdx = (timelineValue - 1) % MAX_FRAMES_IN_FLIGHT;
 	uint64_t waitValue = 0;
@@ -265,7 +265,7 @@ void Vorn::draw_frame() {
 	}
 }
 
-void Vorn::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size) {
+void Velo::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size) {
 	vk::CommandBufferAllocateInfo allocInfo {
 		.commandPool = cmdPool,
 		.level = vk::CommandBufferLevel::ePrimary,
@@ -280,7 +280,7 @@ void Vorn::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize si
 	graphicsQueue.waitIdle();
 }
 
-void Vorn::create_vertex_buffer() {
+void Velo::create_vertex_buffer() {
 	vk::DeviceSize buffSize = sizeof(vertices[0]) * vertices.size();
 	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
@@ -293,7 +293,7 @@ void Vorn::create_vertex_buffer() {
 	copy_buffer(stagingBuff, vertexBuff, buffSize);
 }
 
-uint32_t Vorn::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
+uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
 	vk::PhysicalDeviceMemoryProperties memProperties = physicalDevice.getMemoryProperties();
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -304,7 +304,7 @@ uint32_t Vorn::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags pro
 	std::unreachable();
 }
 
-void Vorn::create_index_buffer() {
+void Velo::create_index_buffer() {
 	vk::DeviceSize buffSize = sizeof(indices[0]) * indices.size();
 	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
@@ -317,7 +317,7 @@ void Vorn::create_index_buffer() {
 	copy_buffer(stagingBuff, indexBuff, buffSize);
 }
 
-void Vorn::create_descriptor_set_layout() {
+void Velo::create_descriptor_set_layout() {
 	vk::DescriptorSetLayoutBinding uniformBinding {
 		.binding = 0,
 		.descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -354,7 +354,7 @@ void Vorn::create_descriptor_set_layout() {
 	descriptorSetLayout = std::move(*layoutExpected);
 }
 
-void Vorn::create_uniform_buffers() {
+void Velo::create_uniform_buffers() {
 
 	uniformBuffs.clear();
 	uniformBuffsMapped.clear();
@@ -385,7 +385,7 @@ void Vorn::create_uniform_buffers() {
 	}
 }
 
-void Vorn::update_uniform_buffers(uint32_t currImg) {
+void Velo::update_uniform_buffers(uint32_t currImg) {
 	static auto startTime = std::chrono::high_resolution_clock().now();
 	auto currentTime = std::chrono::high_resolution_clock().now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
@@ -399,7 +399,7 @@ void Vorn::update_uniform_buffers(uint32_t currImg) {
 	memcpy(uniformBuffsMapped[currImg], &ubo, sizeof(ubo));
 }
 
-void Vorn::create_descriptor_pools() {
+void Velo::create_descriptor_pools() {
 	std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
 		{vk::DescriptorType::eUniformBuffer, MAX_OBJECTS},
 		{vk::DescriptorType::eCombinedImageSampler, MAX_TEXTURES}
@@ -417,7 +417,7 @@ void Vorn::create_descriptor_pools() {
 	descriptorPool = std::move(*poolExpected);
 }
 
-void Vorn::create_descriptor_sets() {
+void Velo::create_descriptor_sets() {
 	descriptorSets.clear();
 	vk::DescriptorSetAllocateInfo allocInfo {
 		.descriptorPool = descriptorPool,

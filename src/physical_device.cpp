@@ -7,11 +7,11 @@ module;
 #include <cstring>
 #include <map>
 
-module vorn;
+module velo;
 // import std;
 import vulkan_hpp;
 
-void Vorn::pick_physical_device() {
+void Velo::pick_physical_device() {
 	auto devicesExpected = instance.enumeratePhysicalDevices();
 	if (!devicesExpected.has_value()) {
 		handle_error("Failed to request available physical devices", devicesExpected.result);
@@ -67,7 +67,7 @@ void Vorn::pick_physical_device() {
 	}
 }
 
-std::tuple<uint32_t, uint32_t> Vorn::find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps) {
+std::tuple<uint32_t, uint32_t> Velo::find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps) {
 	// graphics queue
 	auto graphicsQueueFamily = std::ranges::find_if(qfps, [](vk::QueueFamilyProperties const& qfp) {
 									return static_cast<bool>(qfp.queueFlags & vk::QueueFlagBits::eGraphics);

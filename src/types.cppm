@@ -4,7 +4,7 @@ module;
 #include <vk_mem_alloc.h>
 #include <cstdint>
 
-export module vorn:types;
+export module velo:types;
 // import std;
 import vulkan_hpp;
 

@@ -5,11 +5,11 @@ module;
 #include <stdexcept>
 #include <iostream>
 
-module vorn;
+module velo;
 // import std;
 import vulkan_hpp;
 
-void Vorn::create_graphics_pipeline() {
+void Velo::create_graphics_pipeline() {
 	auto shaderCode = read_file("shaders/shader.spv");
 	vk::raii::ShaderModule shaderModule = create_shader_module(shaderCode);
 
@@ -121,7 +121,7 @@ void Vorn::create_graphics_pipeline() {
 	std::cout << "Successfully created graphics pipeline\n";
 }
 
-vk::raii::ShaderModule Vorn::create_shader_module(const std::vector<char>& code) const {
+vk::raii::ShaderModule Velo::create_shader_module(const std::vector<char>& code) const {
 	vk::ShaderModuleCreateInfo shaderInfo {
 		.codeSize = code.size() * sizeof(char),
 		.pCode = reinterpret_cast<const uint32_t*>(code.data()),

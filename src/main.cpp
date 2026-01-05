@@ -1,10 +1,10 @@
 #include <iostream>
 
 // import std;
-import vorn;
+import velo;
 
 int main() {
-	Vorn app;
+	Velo app;
 	try {
 		app.run();
 	} catch (const std::exception& e) {

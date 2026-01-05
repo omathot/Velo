@@ -1,7 +1,7 @@
 module;
 #include <vk_mem_alloc.h>
 
-module vorn;
+module velo;
 import vulkan_hpp;
 
 VmaBuffer::VmaBuffer(VmaAllocator allocator, vk::DeviceSize size, vk::BufferUsageFlags usage, VmaMemoryUsage vmaMemUsage, VmaAllocationCreateFlags flags) : vmaAllocator(allocator) {

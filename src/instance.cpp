@@ -9,18 +9,18 @@ module;
 #include <algorithm>
 #include <cstring>
 
-module vorn;
+module velo;
 // import std;
 import vulkan_hpp;
 
-void Vorn::init_window() {
+void Velo::init_window() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API,  GLFW_NO_API);
 	window = glfwCreateWindow(WIDTH, HEIGHT, "LVK", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, frameBufferResizeCb);
 }
-void Vorn::create_instance() {
+void Velo::create_instance() {
 	constexpr vk::ApplicationInfo appInfo {
 		.pApplicationName = "LVK",
 		.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
@@ -46,7 +46,7 @@ void Vorn::create_instance() {
 	instance = std::move(*instExpected);
 }
 
-std::vector<char const*> Vorn::get_required_extensions() {
+std::vector<char const*> Velo::get_required_extensions() {
 	std::vector<char const*> requiredExtensions;
 	// VK extensions
 	auto propsExpected = context.enumerateInstanceExtensionProperties();
@@ -81,7 +81,7 @@ std::vector<char const*> Vorn::get_required_extensions() {
 	return requiredExtensions;
 }
 
-std::vector<char const*> Vorn::get_required_layers() {
+std::vector<char const*> Velo::get_required_layers() {
 	// required layers
 	std::vector<char const*> requiredLayers;
 	if (enableValidationLayers) {
@@ -113,7 +113,7 @@ std::vector<char const*> Vorn::get_required_layers() {
 	return requiredLayers;
 }
 
-void Vorn::setup_debug_messenger() {
+void Velo::setup_debug_messenger() {
 	if (!enableValidationLayers) return;
 
 	vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning);
@@ -132,7 +132,7 @@ void Vorn::setup_debug_messenger() {
 	std::cout << "Successfully created DebugMessenger\n";
 }
 
-void Vorn::init_vma() {
+void Velo::init_vma() {
 	VmaVulkanFunctions vkFns = {};
 	vkFns.vkGetInstanceProcAddr = instance.getDispatcher()->vkGetInstanceProcAddr;
 	vkFns.vkGetDeviceProcAddr = instance.getDispatcher()->vkGetDeviceProcAddr;

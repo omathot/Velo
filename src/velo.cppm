@@ -7,7 +7,7 @@ module;
 #include <fstream>
 #include <stdexcept>
 
-export module vorn;
+export module velo;
 import :types;
 // import std;
 import vulkan_hpp;
@@ -38,10 +38,10 @@ constexpr int MAX_TEXTURES = 100;
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
-export class Vorn {
+export class Velo {
 public:
-	Vorn();
-	~Vorn();
+	Velo();
+	~Velo();
 	void run();
 
 private:
@@ -157,7 +157,7 @@ private:
 	}
 
 	static void frameBufferResizeCb(GLFWwindow* window, int /*width*/, int /*height*/) {
-		auto app = reinterpret_cast<Vorn*>(glfwGetWindowUserPointer(window));
+		auto app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
 		app->frameBuffResized = true;
 	}
 };

@@ -4,11 +4,11 @@ module;
 #include <stdexcept>
 #include <iostream>
 
-module vorn;
+module velo;
 // import std;
 import vulkan_hpp;
 
-void Vorn::create_swapchain() {
+void Velo::create_swapchain() {
 	auto capabilitiesExpected = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 	if (!capabilitiesExpected.has_value()) {
 		handle_error("Failed to query for surface capabilities", capabilitiesExpected.result);
@@ -70,7 +70,7 @@ void Vorn::create_swapchain() {
 	std::cout << "Successfully created swapchain and acquired swapchain images\n";
 }
 
-vk::SurfaceFormatKHR Vorn::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
+vk::SurfaceFormatKHR Velo::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
 	// srgb cause most common and best
 	for (const auto& format: availableFormats) {
 		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -80,7 +80,7 @@ vk::SurfaceFormatKHR Vorn::choose_swap_surface_format(const std::vector<vk::Surf
 	// no further rank on how "good" they are for now, if not ideal return first index
 	return availableFormats[0];
 }
-vk::PresentModeKHR Vorn::choose_swap_present_mode(const std::vector<vk::PresentModeKHR> availableModes) {
+vk::PresentModeKHR Velo::choose_swap_present_mode(const std::vector<vk::PresentModeKHR> availableModes) {
 	// mailbox if available
 	for (const auto& mode: availableModes) {
 		if (mode == vk::PresentModeKHR::eMailbox) {
@@ -90,7 +90,7 @@ vk::PresentModeKHR Vorn::choose_swap_present_mode(const std::vector<vk::PresentM
 	// only one guaranteed to exist, also best for mobile devices where energy usage is relevant
 	return vk::PresentModeKHR::eFifo;
 }
-vk::Extent2D Vorn::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) {
+vk::Extent2D Velo::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) {
 	// check for magic number
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
@@ -103,7 +103,7 @@ vk::Extent2D Vorn::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabili
 	};
 }
 
-void Vorn::create_image_views() {
+void Velo::create_image_views() {
 	swapchainImgViews.clear();
 
 	vk::ImageViewCreateInfo viewInfo {

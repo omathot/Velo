@@ -8,11 +8,11 @@ module;
 #include <iostream>
 
 
-module vorn;
+module velo;
 // import std;
 import vulkan_hpp;
 
-void Vorn::create_logical_device() {
+void Velo::create_logical_device() {
 	auto qfps = physicalDevice.getQueueFamilyProperties();
 	auto [graphicsIndex, presentIndex] = find_queue_families(qfps);
 	graphicsIdx = graphicsIndex;
@@ -76,7 +76,7 @@ void Vorn::create_logical_device() {
 	presentQueue = device.getQueue(presentIdx, 0);
 }
 
-void Vorn::create_surface() {
+void Velo::create_surface() {
 	VkSurfaceKHR _surface;
 	if (glfwCreateWindowSurface(*instance, &*window, nullptr, &_surface) != 0) {
 		const char* msg;
@@ -86,7 +86,7 @@ void Vorn::create_surface() {
 	surface = vk::raii::SurfaceKHR(instance, _surface);
 }
 
-void Vorn::create_command_pool() {
+void Velo::create_command_pool() {
 	vk::CommandPoolCreateInfo poolInfo {
 		.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = graphicsIdx
 	};
@@ -97,7 +97,7 @@ void Vorn::create_command_pool() {
 	cmdPool = std::move(*poolExpected);
 }
 
-void Vorn::create_command_buffer() {
+void Velo::create_command_buffer() {
 	cmdBuffers.clear();
 	vk::CommandBufferAllocateInfo allocInfo {
 		.commandPool = *cmdPool,
@@ -112,7 +112,7 @@ void Vorn::create_command_buffer() {
 	cmdBuffers = std::move(*cmdBuffExpected);
 }
 
-void Vorn::create_sync_objects() {
+void Velo::create_sync_objects() {
 	assert(presentCompleteSems.empty() && renderDoneSems.empty());
 
 	for (size_t i = 0; i < swapchainImgs.size(); i++) {
@@ -144,7 +144,7 @@ void Vorn::create_sync_objects() {
 	}
 	timelineSem = std::move(*timeSemExpected);
 }
-void Vorn::recreate_swapchain() {
+void Velo::recreate_swapchain() {
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(window, &width, &height);
 	while (width == 0 || height == 0) {
@@ -158,7 +158,7 @@ void Vorn::recreate_swapchain() {
 	create_image_views();
 }
 
-void Vorn::cleanup_swapchain() {
+void Velo::cleanup_swapchain() {
 	swapchainImgViews.clear();
 	swapchain = nullptr;
 }
