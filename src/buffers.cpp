@@ -1,6 +1,5 @@
 module;
 #include <vk_mem_alloc.h>
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
@@ -91,13 +90,24 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	auto& cmdBuffer = cmdBuffers[frameIdx];
 	cmdBuffer.begin({});
 	transition_image_layout(
-		imgIdx,
+		swapchainImgs[imgIdx],
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::eColorAttachmentOptimal,
 		{},
 		vk::AccessFlagBits2::eColorAttachmentWrite,
 		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eColorAttachmentOutput
+		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+		vk::ImageAspectFlagBits::eColor
+	);
+	transition_image_layout(
+		depthImage.image(),
+		vk::ImageLayout::eUndefined,
+		vk::ImageLayout::eDepthAttachmentOptimal,
+		vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+		vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+		vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+		vk::ImageAspectFlagBits::eDepth
 	);
 	vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 	vk::RenderingAttachmentInfo attachmentInfo = {
@@ -107,11 +117,20 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 		.storeOp = vk::AttachmentStoreOp::eStore,
 		.clearValue = clearColor
 	};
+	vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
+	vk::RenderingAttachmentInfo depthAttachmentInfo {
+		.imageView = depthImageView,
+		.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+		.loadOp = vk::AttachmentLoadOp::eClear,
+		.storeOp = vk::AttachmentStoreOp::eDontCare,
+		.clearValue = clearDepth
+	};
 	vk::RenderingInfo renderingInfo = {
 		.renderArea = {.offset = {0, 0}, .extent = swapchainExtent},
 		.layerCount = 1,
 		.colorAttachmentCount = 1,
-		.pColorAttachments = &attachmentInfo
+		.pColorAttachments = &attachmentInfo,
+		.pDepthAttachment = &depthAttachmentInfo
 	};
 
 	cmdBuffer.beginRendering(renderingInfo);
@@ -127,13 +146,14 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.endRendering();
 
 	transition_image_layout(
-		imgIdx,
+		swapchainImgs[imgIdx],
 		vk::ImageLayout::eColorAttachmentOptimal,
 		vk::ImageLayout::ePresentSrcKHR,
 		vk::AccessFlagBits2::eColorAttachmentWrite,
 		{},
 		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-		vk::PipelineStageFlagBits2::eBottomOfPipe
+		vk::PipelineStageFlagBits2::eBottomOfPipe,
+		vk::ImageAspectFlagBits::eColor
 	);
 	cmdBuffer.end();
 }

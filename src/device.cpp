@@ -167,6 +167,7 @@ void Velo::recreate_swapchain() {
 	cleanup_swapchain();
 	create_swapchain();
 	create_image_views();
+	create_depth_resources();
 }
 
 void Velo::cleanup_swapchain() {

@@ -19,7 +19,7 @@ Sampler2D textures[];
 ConstantBuffer<UniformBufferObject> ubos[];
 
 struct VSInput {
-  float2 inPos;
+  float3 inPos;
   float3 inColor;
   float2 inTexCoord;
 };
@@ -37,7 +37,7 @@ VSOutput vertMain(VSInput input) {
   // Access UBO by index from push constants
   UniformBufferObject ubo = ubos[pc.objIdx];
 
-  output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPos, 0.0, 1.0))));
+  output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPos, 1.0))));
   output.fragColor = input.inColor;
   output.fragTexCoord = input.inTexCoord;
   return output;
@@ -46,11 +46,11 @@ VSOutput vertMain(VSInput input) {
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_Target {
   // default
-  // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord);
+  return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord);
 
   // repeat
   // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 3);
 
   // color + repeat
-  return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 2).rgb, 1.0);
+  // return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 2).rgb, 1.0);
 }

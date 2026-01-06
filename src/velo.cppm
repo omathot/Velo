@@ -40,14 +40,20 @@ constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
 const std::vector<Vertex> vertices = {
-	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
+	{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0
+	0, 1, 2, 2, 3, 0,
+	4, 5, 6, 6, 7, 4
 };
 
 export class Velo {
@@ -99,6 +105,8 @@ private:
 	VmaImage textureImage;
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler textureSampler = nullptr;
+	VmaImage depthImage;
+	vk::raii::ImageView depthImageView = nullptr;
 
 	/// Total frame count for app lifespan
 	uint32_t frameCount = 0;
@@ -133,13 +141,14 @@ private:
 	void record_command_buffer(uint32_t imgIdx);
 	// img transitions
 	void transition_image_layout(
-		uint32_t imgIdx,
+		vk::Image img,
 		vk::ImageLayout oldLayout,
 		vk::ImageLayout newLayout,
 		vk::AccessFlags2 srcAccessMask,
 		vk::AccessFlags2 dstAccessMask,
 		vk::PipelineStageFlags2 srcStageMask,
-		vk::PipelineStageFlags2 dstStageMask
+		vk::PipelineStageFlags2 dstStageMask,
+		vk::ImageAspectFlags aspectFlags
 	);
 	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 	void create_sync_objects();
@@ -160,8 +169,14 @@ private:
 	void end_single_time_commands(vk::raii::CommandBuffer& cmdBuff);
 	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height);
 	void create_texture_image_view();
-	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt);
+	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags);
 	void create_texture_sampler();
+	void create_depth_resources();
+	/// vector must be ordered from most desirable to least desirable
+	vk::Format find_supported_format(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+	vk::Format find_depth_format();
+	bool has_stencil_component(vk::Format fmt);
+
 
 	void draw_frame();
 

@@ -44,6 +44,7 @@ void Velo::init_vulkan() {
 	create_descriptor_sets();
 	create_graphics_pipeline();
 	create_command_pool();
+	create_depth_resources();
 	create_texture_image();
 	create_texture_sampler();
 	create_texture_image_view();
@@ -72,6 +73,7 @@ void Velo::cleanup() {
 	indexBuff = VmaBuffer{};
 	vertexBuff = VmaBuffer{};
 	textureImage = VmaImage{};
+	depthImage = VmaImage{};
 	vmaDestroyAllocator(allocator);
 	/*
 		we delete window manually here before raii destructors run
@@ -84,13 +86,14 @@ void Velo::cleanup() {
 }
 
 void Velo::transition_image_layout(
-		uint32_t imgIdx,
+		vk::Image img,
 		vk::ImageLayout oldLayout,
 		vk::ImageLayout newLayout,
 		vk::AccessFlags2 srcAccessMask,
 		vk::AccessFlags2 dstAccessMask,
 		vk::PipelineStageFlags2 srcStageMask,
-		vk::PipelineStageFlags2 dstStageMask
+		vk::PipelineStageFlags2 dstStageMask,
+		vk::ImageAspectFlags aspectFlags
 ) {
 	vk::ImageMemoryBarrier2 barrier = {
 		.srcStageMask = srcStageMask,
@@ -101,9 +104,9 @@ void Velo::transition_image_layout(
 		.newLayout = newLayout,
 		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		.image = swapchainImgs[imgIdx],
+		.image = img,
 		.subresourceRange = {
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.aspectMask = aspectFlags,
 			.baseMipLevel = 0,
 			.levelCount = 1,
 			.baseArrayLayer = 0,
@@ -358,7 +361,7 @@ void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t w
 }
 
 void Velo::create_texture_image_view() {
-	textureImageView = create_image_view(textureImage.image(), vk::Format::eR8G8B8A8Srgb);
+	textureImageView = create_image_view(textureImage.image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 	vk::DescriptorImageInfo imageInfo {
 		.sampler = *textureSampler,
 		.imageView = textureImageView,
@@ -377,13 +380,13 @@ void Velo::create_texture_image_view() {
 	device.updateDescriptorSets(writes, nullptr);
 }
 
-vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt) {
+vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags) {
 	vk::ImageViewCreateInfo viewInfo {
 		.image = img,
 		.viewType = vk::ImageViewType::e2D,
 		.format = fmt,
 		.subresourceRange = {
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.aspectMask = aspectFlags,
 			.baseMipLevel = 0,
 			.levelCount = 1,
 			.baseArrayLayer = 0,
@@ -421,4 +424,35 @@ void Velo::create_texture_sampler() {
 		handle_error("Failed to create texture sampler", samplerExpected.result);
 	}
 	textureSampler = std::move(*samplerExpected);
+}
+
+void Velo::create_depth_resources() {
+	vk::Format depthFmt = find_depth_format();
+	depthImage = VmaImage(allocator, vk::ImageUsageFlagBits::eDepthStencilAttachment, depthFmt, swapchainExtent.width, swapchainExtent.height, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	depthImageView = create_image_view(depthImage.image(), depthFmt, vk::ImageAspectFlagBits::eDepth);
+}
+
+vk::Format Velo::find_supported_format(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+	for (const auto format : candidates) {
+		vk::FormatProperties props = physicalDevice.getFormatProperties(format);
+		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
+			return format;
+		}
+		if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
+			return format;
+		}
+	}
+	throw std::runtime_error("Failed to find supported format");
+}
+
+
+vk::Format Velo::find_depth_format() {
+	return find_supported_format(
+		{vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+		vk::ImageTiling::eOptimal,
+		vk::FormatFeatureFlagBits::eDepthStencilAttachment
+	);
+}
+bool Velo::has_stencil_component(vk::Format fmt) {
+	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
 }

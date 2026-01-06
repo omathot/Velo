@@ -60,6 +60,14 @@ void Velo::create_graphics_pipeline() {
 		.lineWidth = 1.0f
 	};
 
+	vk::PipelineDepthStencilStateCreateInfo depthStencil {
+		.depthTestEnable = vk::True,
+		.depthWriteEnable = vk::True,
+		.depthCompareOp = vk::CompareOp::eLess,
+		.depthBoundsTestEnable = vk::False,
+		.stencilTestEnable = vk::False
+	};
+
 	vk::PipelineMultisampleStateCreateInfo multisampling {
 		.rasterizationSamples = vk::SampleCountFlagBits::e1,
 		.sampleShadingEnable = vk::False
@@ -93,9 +101,11 @@ void Velo::create_graphics_pipeline() {
 	}
 	pipelineLayout = std::move(*layoutExpected);
 
+	auto depthFmt = find_depth_format();
 	vk::PipelineRenderingCreateInfo renderingInfo {
 		.colorAttachmentCount = 1,
-		.pColorAttachmentFormats = &swapchainImgFmt
+		.pColorAttachmentFormats = &swapchainImgFmt,
+		.depthAttachmentFormat = depthFmt
 	};
 
 	vk::GraphicsPipelineCreateInfo pipelineInfo {
@@ -107,6 +117,7 @@ void Velo::create_graphics_pipeline() {
 		.pViewportState = &viewportState,
 		.pRasterizationState = &rasterizer,
 		.pMultisampleState = &multisampling,
+		.pDepthStencilState = &depthStencil,
 		.pColorBlendState = &colorBlending,
 		.pDynamicState = &dynStateInfo,
 		.layout = *pipelineLayout,
