@@ -21,7 +21,7 @@ ConstantBuffer<UniformBufferObject> ubos[];
 struct VSInput {
   float2 inPos;
   float3 inColor;
-  float2 inTexCoord;;
+  float2 inTexCoord;
 };
 
 struct VSOutput {
@@ -45,6 +45,12 @@ VSOutput vertMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_Target {
-   return textures[pc.textureIdx].Sample(vertIn.fragTexCoord);
+  // default
   // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord);
+
+  // repeat
+  // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 3);
+
+  // color + repeat
+  return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 2).rgb, 1.0);
 }

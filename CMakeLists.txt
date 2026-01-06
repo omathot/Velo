@@ -75,9 +75,16 @@ function (add_slang_shader_target TARGET)
               OUTPUT ${SHADERS_DIR}
               COMMAND ${CMAKE_COMMAND} -E make_directory ${SHADERS_DIR}
        )
+       # very long -profile is to explicitly enable slangc features
+       # not necessary slangc turns them on automatically when needed
        add_custom_command (
               OUTPUT  ${SHADERS_DIR}/slang.spv
-              COMMAND ${SLANGC_EXECUTABLE} ${SHADER_SOURCES} -target spirv -profile spirv_1_4 -emit-spirv-directly -fvk-use-entrypoint-name ${ENTRY_POINTS} -o shader.spv
+              COMMAND ${SLANGC_EXECUTABLE} ${SHADER_SOURCES}
+                     -target spirv
+                     -profile spirv_1_6+SPV_GOOGLE_user_type+spvDerivativeControl+spvImageQuery+spvImageGatherExtended+spvSparseResidency+spvMinLod+spvFragmentFullyCoveredEXT
+                     -emit-spirv-directly
+                     -fvk-use-entrypoint-name ${ENTRY_POINTS}
+                     -o shader.spv
               WORKING_DIRECTORY ${SHADERS_DIR}
               DEPENDS ${SHADERS_DIR} ${SHADER_SOURCES}
               COMMENT "Compiling Slang Shaders"
