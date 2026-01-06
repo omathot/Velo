@@ -4,6 +4,8 @@ module;
 #include <tiny_obj_loader.h>
 //
 #include <iostream>
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include <stdexcept>
 #include <utility>
@@ -469,6 +471,7 @@ void Velo::load_model() {
 		throw std::runtime_error(warn + err);
 	}
 
+	std::unordered_map<Vertex, uint32_t> uniqueVertices;
 	for (const auto& shape: shapes) {
 		for (const auto& idx: shape.mesh.indices) {
 			Vertex vertex{};
@@ -484,9 +487,12 @@ void Velo::load_model() {
 			};
 			vertex.color = {1.0f, 1.0f, 1.0f};
 
-			vertices.push_back(vertex);
-			indices.push_back(indices.size());
+			if (uniqueVertices.count(vertex) == 0) {
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
+			}
+			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
-	std::cout << "Successfully loaded model\n";
+	std::cout << "Successfully loaded model, total vertices = " << vertices.size() << std::endl;;
 }

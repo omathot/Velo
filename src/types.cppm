@@ -1,7 +1,11 @@
 module;
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#define GLM_ENABLE_EXPERIMENTAL
+#include <functional>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/hash.hpp>
 #include <vk_mem_alloc.h>
 #include <cstdint>
 
@@ -23,6 +27,16 @@ struct Vertex {
 			vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)),
 	        vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord))
 		};
+	}
+
+	bool operator==(const Vertex &other) const {
+		return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	}
+};
+template <>
+struct std::hash<Vertex> {
+	size_t operator()(Vertex const &vertex) const noexcept {
+		return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
 	}
 };
 
