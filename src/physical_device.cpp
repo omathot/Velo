@@ -27,11 +27,11 @@ void Velo::pick_physical_device() {
 		auto deviceProperties = device.getProperties();
 		auto deviceFeatures = device.getFeatures();
 		auto queueFamilies = device.getQueueFamilyProperties();
-		auto devExpected = device.enumerateDeviceExtensionProperties();
-		if (!devExpected.has_value()) {
-			handle_error("Failed to query device for extensions", devExpected.result);
+		auto extsExpected = device.enumerateDeviceExtensionProperties();
+		if (!extsExpected.has_value()) {
+			handle_error("Failed to query device for extensions", extsExpected.result);
 		}
-		auto deviceExts = *devExpected;
+		auto deviceExts = *extsExpected;
 
 		// check suitability
 		bool recentEnough = deviceProperties.apiVersion >= vk::ApiVersion13;
@@ -43,7 +43,7 @@ void Velo::pick_physical_device() {
 										return std::strcmp(extProperty.extensionName, deviceExtension) == 0;
 									});
 								});
-		if (!deviceFeatures.geometryShader) {
+		if (!deviceFeatures.geometryShader || !deviceFeatures.samplerAnisotropy) {
 			continue;
 		}
 		if (!recentEnough || !haveExtensions || qfpIter == queueFamilies.end()) {

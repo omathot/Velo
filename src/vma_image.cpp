@@ -3,11 +3,11 @@ module;
 
 module velo;
 
-VmaImage::VmaImage(VmaAllocator allocator, vk::ImageUsageFlags usage, vk::Format fmt, VmaMemoryUsage vmaMemUsage, VmaAllocationCreateFlags flags) : vmaAllocator(allocator) {
+VmaImage::VmaImage(VmaAllocator allocator, vk::ImageUsageFlags usage, vk::Format fmt, uint32_t width, uint32_t height, VmaMemoryUsage vmaMemUsage, VmaAllocationCreateFlags flags) : vmaAllocator(allocator) {
 	vk::ImageCreateInfo buffInfo {
 		.imageType = vk::ImageType::e2D,
 		.format = fmt,
-		.extent = {WIDTH, HEIGHT, 1},
+		.extent = {width, height, 1},
 		.mipLevels = 1,
 		.arrayLayers = 1,
 		.samples =vk::SampleCountFlagBits::e1,

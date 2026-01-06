@@ -45,6 +45,8 @@ void Velo::init_vulkan() {
 	create_graphics_pipeline();
 	create_command_pool();
 	create_texture_image();
+	create_texture_sampler();
+	create_texture_image_view();
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffers();
@@ -69,7 +71,7 @@ void Velo::cleanup() {
 	uniformBuffs.clear();
 	indexBuff = VmaBuffer{};
 	vertexBuff = VmaBuffer{};
-	image = VmaImage{};
+	textureImage = VmaImage{};
 	vmaDestroyAllocator(allocator);
 	/*
 		we delete window manually here before raii destructors run
@@ -238,10 +240,24 @@ void Velo::create_texture_image() {
 	vmaUnmapMemory(allocator, stagingBuffer.allocation());
 
 	stbi_image_free(pixels);
-	image = VmaImage(allocator, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	textureImage = VmaImage(allocator, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 	std::cout << "Successfully created image\n";
+
+	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+	copy_buffer_to_image(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
+/*
+	"All the helper functions that submit commands so far have been set up to execute synchronously by
+	waiting for the queue to become idle. For practical applications it is recommended to combine these operations
+	in a single command buffer and execute them asynchronously for higher throughput, especially the transitions
+	and copy in the createTextureImage function. Try to experiment with this by creating a setupCommandBuffer that the
+	helper functions record commands into, and add a flushSetupCommands to execute the commands that have been recorded so far.
+	It’s best to do this after the texture mapping works to check if the texture resources are still set up correctly."
+		 - tutorial (https://docs.vulkan.org/tutorial/latest/06_Texture_mapping/00_Images.html)
+	TODO: Make command submit asynchronous
+*/
 vk::raii::CommandBuffer Velo::begin_single_time_commands() {
 	vk::CommandBufferAllocateInfo allocInfo {
 		.commandPool = cmdPool,
@@ -253,6 +269,11 @@ vk::raii::CommandBuffer Velo::begin_single_time_commands() {
 		handle_error("Failed to allocate command buffer", cmdBuffExpected.result);
 	}
 	auto cmdBuff = std::move(cmdBuffExpected->front());
+	vk::CommandBufferBeginInfo beginInfo {
+		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+	};
+	cmdBuff.begin(beginInfo);
+
 	return cmdBuff;
 }
 
@@ -265,4 +286,139 @@ void Velo::end_single_time_commands(vk::raii::CommandBuffer& cmdBuff)  {
 	};
 	graphicsQueue.submit(submitInfo);
 	graphicsQueue.waitIdle();
+}
+
+void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+	auto cmdBuff = begin_single_time_commands();
+
+	vk::ImageMemoryBarrier2 barrier = {
+		.oldLayout = oldLayout,
+		.newLayout = newLayout,
+		.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		.image = img.image(),
+		.subresourceRange = {
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		}
+	};
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+		barrier.srcAccessMask = {};
+		barrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
+		barrier.srcStageMask= vk::PipelineStageFlagBits2::eTopOfPipe;
+		barrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+	} else if(oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+		barrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
+		barrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+		barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+	} else {
+		throw std::invalid_argument("Unsupposed layout transition");
+	}
+
+	vk::DependencyInfo depInfo = {
+		.dependencyFlags = {},
+		.imageMemoryBarrierCount = 1,
+		.pImageMemoryBarriers = &barrier,
+	};
+	cmdBuff.pipelineBarrier2(depInfo);
+
+	end_single_time_commands(cmdBuff);
+
+}
+
+void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height) {
+	auto cmdBuff = begin_single_time_commands();
+	vk::BufferImageCopy2 region {
+		.bufferOffset = 0,
+		.bufferRowLength = 0,
+		.bufferImageHeight = 0,
+		.imageSubresource = {
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		},
+		.imageOffset = {0, 0, 0},
+		.imageExtent = {width, height, 1}
+	};
+	vk::CopyBufferToImageInfo2 imgInfo {
+		.srcBuffer = buff.buffer(),
+		.dstImage = img.image(),
+		.dstImageLayout = vk::ImageLayout::eTransferDstOptimal,
+		.regionCount = 1,
+		.pRegions = &region
+	};
+	cmdBuff.copyBufferToImage2(imgInfo);
+
+	end_single_time_commands(cmdBuff);
+}
+
+void Velo::create_texture_image_view() {
+	textureImageView = create_image_view(textureImage.image(), vk::Format::eR8G8B8A8Srgb);
+	vk::DescriptorImageInfo imageInfo {
+		.sampler = *textureSampler,
+		.imageView = textureImageView,
+		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+	};
+	// could just do like for ubos
+	// make views and arrayElem = i
+	vk::WriteDescriptorSet writes {
+		.dstSet = *descriptorSets,
+		.dstBinding = 1,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		.pImageInfo = &imageInfo
+	};
+	device.updateDescriptorSets(writes, nullptr);
+}
+
+vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt) {
+	vk::ImageViewCreateInfo viewInfo {
+		.image = img,
+		.viewType = vk::ImageViewType::e2D,
+		.format = fmt,
+		.subresourceRange = {
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		}
+	};
+	auto imgViewExpected = device.createImageView(viewInfo);
+	if (!imgViewExpected.has_value()) {
+		handle_error("Failed to create image view", imgViewExpected.result);
+	}
+	return (std::move(*imgViewExpected));
+
+}
+
+void Velo::create_texture_sampler() {
+	vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+	vk::SamplerCreateInfo samplerInfo {
+		.magFilter = vk::Filter::eLinear,
+		.minFilter = vk::Filter::eLinear,
+		.mipmapMode = vk::SamplerMipmapMode::eLinear,
+		.addressModeU = vk::SamplerAddressMode::eRepeat,
+		.addressModeV = vk::SamplerAddressMode::eRepeat,
+		.mipLodBias = 0.0f,
+		.anisotropyEnable = vk::True,
+		.maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+		.compareEnable = vk::False,
+		.compareOp = vk::CompareOp::eAlways,
+		.minLod = 0.0f,
+		.maxLod = 0.0f,
+		.borderColor = vk::BorderColor::eIntOpaqueBlack,
+		.unnormalizedCoordinates = vk::False
+	};
+	auto samplerExpected = device.createSampler(samplerInfo);
+	if (!samplerExpected.has_value()) {
+		handle_error("Failed to create texture sampler", samplerExpected.result);
+	}
+	textureSampler = std::move(*samplerExpected);
 }

@@ -11,14 +11,16 @@ import vulkan_hpp;
 struct Vertex {
 	glm::vec2 pos;
 	glm::vec3 color;
+	glm::vec2 texCoord;
 
 	static vk::VertexInputBindingDescription get_bindings_description() {
 		return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};
 	}
-	static std::array<vk::VertexInputAttributeDescription, 2> get_attribute_description() {
+	static std::array<vk::VertexInputAttributeDescription, 3> get_attribute_description() {
 		return {
 			vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
-			vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos))
+			vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)),
+	        vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord))
 		};
 	}
 };
@@ -57,7 +59,7 @@ struct UniformBufferObject {
 class VmaImage {
 public:
 	VmaImage() = default;
-	VmaImage(VmaAllocator allocator, vk::ImageUsageFlags usage, vk::Format fmt, VmaMemoryUsage vmaMemUsage = VMA_MEMORY_USAGE_AUTO, VmaAllocationCreateFlags flags = 0);
+	VmaImage(VmaAllocator allocator, vk::ImageUsageFlags usage, vk::Format fmt, uint32_t width, uint32_t height, VmaMemoryUsage vmaMemUsage = VMA_MEMORY_USAGE_AUTO, VmaAllocationCreateFlags flags = 0);
 	~VmaImage();
 	VmaImage(VmaImage&& other) noexcept;
 	VmaImage& operator=(VmaImage&& other) noexcept;

@@ -82,18 +82,9 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 	memcpy(uniformBuffsMapped[currImg], &ubo, sizeof(ubo));
 }
 void Velo::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size) {
-	vk::CommandBufferAllocateInfo allocInfo {
-		.commandPool = cmdPool,
-		.level = vk::CommandBufferLevel::ePrimary,
-		.commandBufferCount = 1
-	};
-	vk::raii::CommandBuffer cmdCopyBuff = std::move(device.allocateCommandBuffers(allocInfo).value.front());
-	// auto buffExpected = dev
-	cmdCopyBuff.begin(vk::CommandBufferBeginInfo {.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-	cmdCopyBuff.copyBuffer(srcBuff.buffer(), dstBuff.buffer(), vk::BufferCopy(0, 0, size));
-	cmdCopyBuff.end();
-	graphicsQueue.submit(vk::SubmitInfo {.commandBufferCount = 1, .pCommandBuffers = &*cmdCopyBuff,}, nullptr);
-	graphicsQueue.waitIdle();
+	auto cmdBuff = begin_single_time_commands();
+	cmdBuff.copyBuffer(srcBuff.buffer(), dstBuff.buffer(), vk::BufferCopy(0, 0, size));
+	end_single_time_commands(cmdBuff);
 }
 
 void Velo::record_command_buffer(uint32_t imgIdx) {

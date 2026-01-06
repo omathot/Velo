@@ -19,11 +19,18 @@ void Velo::create_logical_device() {
 	presentIdx = presentIndex;
 	float queuePrio = 1.0f;
 
-	vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceVulkan12Features, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
-		{},
-		{ // 1.3
-			.synchronization2 = true,
-			.dynamicRendering = true
+	vk::StructureChain<
+		vk::PhysicalDeviceFeatures2,
+		vk::PhysicalDeviceVulkan11Features,
+		vk::PhysicalDeviceVulkan12Features,
+		vk::PhysicalDeviceVulkan13Features,
+		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
+	> featureChain = {
+		{.features = { // 1.0
+			.samplerAnisotropy = true
+		}},
+		{ // 1.1
+			.shaderDrawParameters = true
 		},
 		{ // 1.2
 			.descriptorIndexing = true,
@@ -37,7 +44,11 @@ void Velo::create_logical_device() {
 			.runtimeDescriptorArray = true,
 			.timelineSemaphore = true
 		},
-		{.shaderDrawParameters = true}, // 1.1
+		{ // 1.3
+			.synchronization2 = true,
+			.dynamicRendering = true
+		},
+		// extensions
 		{.extendedDynamicState = true},
 	};
 

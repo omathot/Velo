@@ -40,10 +40,10 @@ constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+	{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = {
@@ -96,7 +96,9 @@ private:
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
 
-	VmaImage image;
+	VmaImage textureImage;
+	vk::raii::ImageView textureImageView = nullptr;
+	vk::raii::Sampler textureSampler = nullptr;
 
 	/// Total frame count for app lifespan
 	uint32_t frameCount = 0;
@@ -129,6 +131,7 @@ private:
 	void create_command_pool();
 	void create_command_buffer();
 	void record_command_buffer(uint32_t imgIdx);
+	// img transitions
 	void transition_image_layout(
 		uint32_t imgIdx,
 		vk::ImageLayout oldLayout,
@@ -138,6 +141,7 @@ private:
 		vk::PipelineStageFlags2 srcStageMask,
 		vk::PipelineStageFlags2 dstStageMask
 	);
+	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 	void create_sync_objects();
 	void recreate_swapchain();
 	void cleanup_swapchain();
@@ -154,6 +158,10 @@ private:
 	void create_texture_image();
 	vk::raii::CommandBuffer begin_single_time_commands();
 	void end_single_time_commands(vk::raii::CommandBuffer& cmdBuff);
+	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height);
+	void create_texture_image_view();
+	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt);
+	void create_texture_sampler();
 
 	void draw_frame();
 
