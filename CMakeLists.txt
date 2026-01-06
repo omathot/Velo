@@ -18,6 +18,15 @@ FetchContent_Declare(
        GIT_TAG v3.3.0
 )
 FetchContent_MakeAvailable(VulkanMemoryAllocator)
+
+FetchContent_Declare(
+       tinyobjloader
+       GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
+       GIT_TAG        origin/release
+       SYSTEM
+)
+FetchContent_MakeAvailable(tinyobjloader)
+
 FetchContent_Declare(
        imgui
        GIT_REPOSITORY https://github.com/ocornut/imgui.git
@@ -114,4 +123,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
        glfw
        GPUOpen::VulkanMemoryAllocator
        imgui::imgui
+       tinyobjloader
 )

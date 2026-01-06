@@ -1,6 +1,7 @@
 module;
 #include <GLFW/glfw3.h>
 #include <vk_mem_alloc.h>
+#include <tiny_obj_loader.h>
 //
 #include <iostream>
 #include <vector>
@@ -48,6 +49,7 @@ void Velo::init_vulkan() {
 	create_texture_image();
 	create_texture_sampler();
 	create_texture_image_view();
+	load_model();
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffers();
@@ -230,7 +232,7 @@ uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags pro
 
 void Velo::create_texture_image() {
 	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load("textures/khronos_sample.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	vk::DeviceSize imgSize = texWidth * texHeight * 4; // 4 bytes per pixel
 	if (!pixels) {
 		throw std::runtime_error("Failed to load pixels from texture");
@@ -455,4 +457,36 @@ vk::Format Velo::find_depth_format() {
 }
 bool Velo::has_stencil_component(vk::Format fmt) {
 	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
+}
+
+void Velo::load_model() {
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+		throw std::runtime_error(warn + err);
+	}
+
+	for (const auto& shape: shapes) {
+		for (const auto& idx: shape.mesh.indices) {
+			Vertex vertex{};
+
+			vertex.pos = {
+				attrib.vertices[3 * idx.vertex_index + 0],
+				attrib.vertices[3 * idx.vertex_index + 1],
+				attrib.vertices[3 * idx.vertex_index + 2]
+			};
+			vertex.texCoord = {
+				attrib.texcoords[2 * idx.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+			};
+			vertex.color = {1.0f, 1.0f, 1.0f};
+
+			vertices.push_back(vertex);
+			indices.push_back(indices.size());
+		}
+	}
+	std::cout << "Successfully loaded model\n";
 }

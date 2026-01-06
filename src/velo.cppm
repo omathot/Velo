@@ -1,12 +1,14 @@
 module;
 #include <GLFW/glfw3.h>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
+//
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
-//
 
 export module velo;
 import :types;
@@ -38,23 +40,8 @@ constexpr int MAX_TEXTURES = 100;
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
-
-const std::vector<Vertex> vertices = {
-	{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-	{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
-
-const std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0,
-	4, 5, 6, 6, 7, 4
-};
+const std::string MODEL_PATH = "models/viking_room.obj";
+const std::string TEXTURE_PATH = "textures/viking_room.png";
 
 export class Velo {
 public:
@@ -97,16 +84,19 @@ private:
 	std::vector<vk::raii::Semaphore> presentCompleteSems;
 	std::vector<vk::raii::Semaphore> renderDoneSems;
 
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
 	VmaBuffer vertexBuff;
 	VmaBuffer indexBuff;
+
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
-
 	VmaImage textureImage;
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler textureSampler = nullptr;
 	VmaImage depthImage;
 	vk::raii::ImageView depthImageView = nullptr;
+
 
 	/// Total frame count for app lifespan
 	uint32_t frameCount = 0;
@@ -176,6 +166,7 @@ private:
 	vk::Format find_supported_format(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 	vk::Format find_depth_format();
 	bool has_stencil_component(vk::Format fmt);
+	void load_model();
 
 
 	void draw_frame();

@@ -136,7 +136,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.beginRendering(renderingInfo);
 	cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 	cmdBuffer.bindVertexBuffers(0, vertexBuff.buffer(), {0});
-	cmdBuffer.bindIndexBuffer(indexBuff.buffer(), 0, vk::IndexType::eUint16);
+	cmdBuffer.bindIndexBuffer(indexBuff.buffer(), 0, vk::IndexType::eUint32);
 	cmdBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainExtent.width), static_cast<float>(swapchainExtent.height), 0.0f, 1.0f));
 	cmdBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapchainExtent));
 	cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets, nullptr);
