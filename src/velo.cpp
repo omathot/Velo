@@ -6,6 +6,8 @@ module;
 #include <vector>
 #include <stdexcept>
 #include <utility>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 
 module velo;
@@ -42,6 +44,7 @@ void Velo::init_vulkan() {
 	create_descriptor_sets();
 	create_graphics_pipeline();
 	create_command_pool();
+	create_texture_image();
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffers();
@@ -66,6 +69,7 @@ void Velo::cleanup() {
 	uniformBuffs.clear();
 	indexBuff = VmaBuffer{};
 	vertexBuff = VmaBuffer{};
+	image = VmaImage{};
 	vmaDestroyAllocator(allocator);
 	/*
 		we delete window manually here before raii destructors run
@@ -219,3 +223,46 @@ uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags pro
 	std::unreachable();
 }
 
+void Velo::create_texture_image() {
+	int texWidth, texHeight, texChannels;
+	stbi_uc* pixels = stbi_load("textures/khronos_sample.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	vk::DeviceSize imgSize = texWidth * texHeight * 4; // 4 bytes per pixel
+	if (!pixels) {
+		throw std::runtime_error("Failed to load pixels from texture");
+	}
+
+	VmaBuffer stagingBuffer = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+	void* data;
+	vmaMapMemory(allocator, stagingBuffer.allocation(), &data);
+	memcpy(data, pixels, imgSize);
+	vmaUnmapMemory(allocator, stagingBuffer.allocation());
+
+	stbi_image_free(pixels);
+	image = VmaImage(allocator, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	std::cout << "Successfully created image\n";
+}
+
+vk::raii::CommandBuffer Velo::begin_single_time_commands() {
+	vk::CommandBufferAllocateInfo allocInfo {
+		.commandPool = cmdPool,
+		.level = vk::CommandBufferLevel::ePrimary,
+		.commandBufferCount = 1
+	};
+	auto cmdBuffExpected = device.allocateCommandBuffers(allocInfo);
+	if (!cmdBuffExpected.has_value()) {
+		handle_error("Failed to allocate command buffer", cmdBuffExpected.result);
+	}
+	auto cmdBuff = std::move(cmdBuffExpected->front());
+	return cmdBuff;
+}
+
+void Velo::end_single_time_commands(vk::raii::CommandBuffer& cmdBuff)  {
+	cmdBuff.end();
+
+	vk::SubmitInfo submitInfo {
+		.commandBufferCount = 1,
+		.pCommandBuffers = &*cmdBuff
+	};
+	graphicsQueue.submit(submitInfo);
+	graphicsQueue.waitIdle();
+}

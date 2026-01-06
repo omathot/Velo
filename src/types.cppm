@@ -54,6 +54,30 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 proj;
 };
 
+class VmaImage {
+public:
+	VmaImage() = default;
+	VmaImage(VmaAllocator allocator, vk::ImageUsageFlags usage, vk::Format fmt, VmaMemoryUsage vmaMemUsage = VMA_MEMORY_USAGE_AUTO, VmaAllocationCreateFlags flags = 0);
+	~VmaImage();
+	VmaImage(VmaImage&& other) noexcept;
+	VmaImage& operator=(VmaImage&& other) noexcept;
+	VmaImage(const VmaImage&) = delete;
+	VmaImage& operator=(const VmaImage&) = delete;
+	explicit operator bool() const { return _image != VK_NULL_HANDLE; }
+
+	VkImage get() const;
+	vk::Image image() const;
+	operator VkImage() const;
+	VmaAllocation allocation() const;
+	void* mapped_data() const;
+
+private:
+	VmaAllocator vmaAllocator = VK_NULL_HANDLE;
+	VkImage _image = VK_NULL_HANDLE;
+	VmaAllocation vmaAllocation = VK_NULL_HANDLE;
+	void* mapped = nullptr;
+};
+
 struct PushConstants {
 	uint32_t objIdx;
 	uint32_t textureidx;

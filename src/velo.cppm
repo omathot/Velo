@@ -6,6 +6,7 @@ module;
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+//
 
 export module velo;
 import :types;
@@ -95,6 +96,8 @@ private:
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
 
+	VmaImage image;
+
 	/// Total frame count for app lifespan
 	uint32_t frameCount = 0;
 	/// Frame Index for VK operations ( % MAX_FRAMES_IN_FLIGHT )
@@ -148,6 +151,9 @@ private:
 	void update_uniform_buffers(uint32_t currImg);
 	void create_descriptor_pools();
 	void create_descriptor_sets();
+	void create_texture_image();
+	vk::raii::CommandBuffer begin_single_time_commands();
+	void end_single_time_commands(vk::raii::CommandBuffer& cmdBuff);
 
 	void draw_frame();
 
