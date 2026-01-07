@@ -111,6 +111,20 @@ file(GLOB_RECURSE SRCS "src/*.cpp")
 file(GLOB_RECURSE MODULES "src/*.cppm")
 
 add_executable(${PROJECT_NAME})
+
+# Codam flag
+option(CODAM "Enable CODAM logic" OFF)
+option(X11 "Enabled X11 logic" OFF)
+
+if(CODAM)
+       message("Enabled Codam")
+       target_compile_definitions(${PROJECT_NAME} PRIVATE CODAM)
+endif()
+if (X11)
+       message("Enabled X11")
+       target_compile_definitions(${PROJECT_NAME} PRIVATE X11)
+endif()
+
 add_dependencies(${PROJECT_NAME} shaders)
 target_sources(${PROJECT_NAME}
   PRIVATE ${SRCS}

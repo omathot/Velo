@@ -48,10 +48,13 @@ public:
 	Velo();
 	~Velo();
 	void run();
-	void set_codam_mode();
+	void enable_codam();
+	void enable_x11();
 
 private:
-	bool codam_mode = false;
+	bool enabled_codam = false;
+	bool enabled_x11 = false;
+
 	GLFWwindow* window;
 	vk::raii::Context context;
 	vk::raii::Instance instance = nullptr;
@@ -171,7 +174,7 @@ private:
 	bool has_stencil_component(vk::Format fmt);
 	void load_model();
 	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
-
+	void create_obj_and_texture_from_mtl();
 
 	void draw_frame();
 
