@@ -78,7 +78,7 @@ void Velo::init_vulkan() {
 }
 
 void Velo::main_loop() {
-	while (!glfwWindowShouldClose(window)) {
+	while (!glfwWindowShouldClose(window) && !should_quit) {
 		glfwPollEvents();
 		draw_frame();
 	}
