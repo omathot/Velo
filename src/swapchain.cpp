@@ -105,7 +105,7 @@ vk::Extent2D Velo::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabili
 void Velo::create_image_views() {
 	swapchainImgViews.clear();
 	for (uint32_t i = 0; i < swapchainImgs.size(); i++) {
-		auto imgView = create_image_view(swapchainImgs[i], swapchainImgFmt, vk::ImageAspectFlagBits::eColor);
+		auto imgView = create_image_view(swapchainImgs[i], swapchainImgFmt, vk::ImageAspectFlagBits::eColor, 1);
 		swapchainImgViews.emplace_back(std::move(imgView));
 	}
 	std::cout << "Successfully created image views, imgViews vec size: " << swapchainImgViews.size() << std::endl;;

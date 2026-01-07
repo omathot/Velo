@@ -10,7 +10,7 @@ module velo;
 import vulkan_hpp;
 
 void Velo::create_graphics_pipeline() {
-	auto shaderCode = read_file("shaders/shader.spv");
+	auto shaderCode = read_file("/home/omathot/dev/cpp/velo/shaders/shader.spv");
 	vk::raii::ShaderModule shaderModule = create_shader_module(shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderInfo{

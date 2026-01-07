@@ -3,6 +3,8 @@ module;
 #include <vk_mem_alloc.h>
 #include <tiny_obj_loader.h>
 //
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <cstdint>
 #include <unordered_map>
@@ -23,7 +25,10 @@ Velo::Velo() {
 
 Velo::~Velo() {
 	std::cout << "Destructing Velo\n";
+}
 
+void Velo::set_codam_mode() {
+	codam_mode = true;
 }
 
 void Velo::run() {
@@ -41,7 +46,7 @@ void Velo::init_vulkan() {
 	create_logical_device();
 	init_vma();
 	create_swapchain();
-	create_image_views();
+	create_image_views(); // this
 	create_descriptor_set_layout();
 	create_descriptor_pools();
 	create_descriptor_sets();
@@ -156,10 +161,7 @@ void Velo::draw_frame() {
 
 	update_uniform_buffers(frameIdx);
 	auto nextImgExpected = swapchain.acquireNextImage(UINT64_MAX, *presentCompleteSems[frameIdx], nullptr);
-	if (!nextImgExpected.has_value()) {
-		handle_error("Failed to acquire next swapchain image", nextImgExpected.result);
-	}
-	// TODO: Mark suboptimalKHR for recreation after rather than recreate now, it's soft
+	bool recreate = nextImgExpected.result == vk::Result::eSuboptimalKHR;
 	if (nextImgExpected.result == vk::Result::eErrorOutOfDateKHR) {
 		frameBuffResized = false;
 		recreate_swapchain();
@@ -170,7 +172,10 @@ void Velo::draw_frame() {
 		device.signalSemaphore(signalInfo);
 		return;
 	}
-	auto imgIdx = *nextImgExpected;
+	if (!nextImgExpected.has_value() && !recreate) {
+		handle_error("Failed to acquire next swapchain image", nextImgExpected.result);
+	}
+	auto imgIdx = nextImgExpected.value;
 	record_command_buffer(imgIdx);
 
 	// using sync 2 feature
@@ -214,7 +219,7 @@ void Velo::draw_frame() {
 		.pImageIndices = &imgIdx
 	};
 	auto presentExpected = presentQueue.presentKHR(presentInfo);
-	if (presentExpected == vk::Result::eErrorOutOfDateKHR || presentExpected == vk::Result::eSuboptimalKHR) {
+	if (presentExpected == vk::Result::eErrorOutOfDateKHR || presentExpected == vk::Result::eSuboptimalKHR || recreate) {
 		recreate_swapchain();
 	} else if (presentExpected != vk::Result::eSuccess) {
 		handle_error("Failed to present frame", presentExpected);
@@ -233,12 +238,18 @@ uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags pro
 }
 
 void Velo::create_texture_image() {
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	int texWidth = 0, texHeight = 0, texChannels = 0;
+	stbi_uc* pixels{};
+	// if (codam_mode) {
+		// tinyobj::LoadMtl(std::map<std::string, int> *material_map, std::vector<material_t> *materials, std::istream *inStream, std::string *warning, std::string *err)
+	// } else {
+		pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		if (!pixels) {
+			throw std::runtime_error("Failed to load pixels from texture");
+		}
+	// }
 	vk::DeviceSize imgSize = texWidth * texHeight * 4; // 4 bytes per pixel
-	if (!pixels) {
-		throw std::runtime_error("Failed to load pixels from texture");
-	}
+	mipLvls = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 	VmaBuffer stagingBuffer = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 	void* data;
@@ -247,12 +258,12 @@ void Velo::create_texture_image() {
 	vmaUnmapMemory(allocator, stagingBuffer.allocation());
 
 	stbi_image_free(pixels);
-	textureImage = VmaImage(allocator, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	textureImage = VmaImage(allocator, texWidth, texHeight, mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
 	std::cout << "Successfully created image\n";
 
-	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLvls);
 	copy_buffer_to_image(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLvls);
 }
 
 /*
@@ -295,7 +306,7 @@ void Velo::end_single_time_commands(vk::raii::CommandBuffer& cmdBuff)  {
 	graphicsQueue.waitIdle();
 }
 
-void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout) {
+void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLvls) {
 	auto cmdBuff = begin_single_time_commands();
 
 	vk::ImageMemoryBarrier2 barrier = {
@@ -307,7 +318,7 @@ void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLay
 		.subresourceRange = {
 			.aspectMask = vk::ImageAspectFlagBits::eColor,
 			.baseMipLevel = 0,
-			.levelCount = 1,
+			.levelCount = mipLvls,
 			.baseArrayLayer = 0,
 			.layerCount = 1
 		}
@@ -365,7 +376,7 @@ void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t w
 }
 
 void Velo::create_texture_image_view() {
-	textureImageView = create_image_view(textureImage.image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
+	textureImageView = create_image_view(textureImage.image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, mipLvls);
 	vk::DescriptorImageInfo imageInfo {
 		.sampler = *textureSampler,
 		.imageView = textureImageView,
@@ -384,7 +395,7 @@ void Velo::create_texture_image_view() {
 	device.updateDescriptorSets(writes, nullptr);
 }
 
-vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags) {
+vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mipLvls) {
 	vk::ImageViewCreateInfo viewInfo {
 		.image = img,
 		.viewType = vk::ImageViewType::e2D,
@@ -392,7 +403,7 @@ vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt
 		.subresourceRange = {
 			.aspectMask = aspectFlags,
 			.baseMipLevel = 0,
-			.levelCount = 1,
+			.levelCount = mipLvls,
 			.baseArrayLayer = 0,
 			.layerCount = 1
 		}
@@ -432,8 +443,8 @@ void Velo::create_texture_sampler() {
 
 void Velo::create_depth_resources() {
 	vk::Format depthFmt = find_depth_format();
-	depthImage = VmaImage(allocator, vk::ImageUsageFlagBits::eDepthStencilAttachment, depthFmt, swapchainExtent.width, swapchainExtent.height, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
-	depthImageView = create_image_view(depthImage.image(), depthFmt, vk::ImageAspectFlagBits::eDepth);
+	depthImage = VmaImage(allocator, swapchainExtent.width, swapchainExtent.height, 1, vk::ImageUsageFlagBits::eDepthStencilAttachment, depthFmt,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
+	depthImageView = create_image_view(depthImage.image(), depthFmt, vk::ImageAspectFlagBits::eDepth, 1);
 }
 
 vk::Format Velo::find_supported_format(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
@@ -466,8 +477,9 @@ void Velo::load_model() {
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
+	std::string basedir = "/home/omathot/dev/cpp/velo/models/";
 
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str(), basedir.c_str())) {
 		throw std::runtime_error(warn + err);
 	}
 
@@ -496,3 +508,32 @@ void Velo::load_model() {
 	}
 	std::cout << "Successfully loaded model, total vertices = " << vertices.size() << std::endl;;
 }
+
+// void Velo::load_material_textures(const std::vector<tinyobj::material_t>& materials) {
+// 	std::vector<vk::DescriptorImageInfo> imageInfos;
+
+// 	// for (const auto& material: materials) {
+// 	// 	VmaImage texture;
+// 	// 	vk::raii::ImageView view = nullptr;
+
+// 	// 	if (!material.diffuse_texname.empty()) {
+// 	// 		texture =
+// 	// 	}
+// 	// }
+// }
+
+// void Velo::load_material() {
+// 	tinyobj::ObjReader reader;
+// 	tinyobj::ObjReaderConfig config;
+// 	config.mtl_search_path = "textures/";
+
+// 	if (!reader.ParseFromFile(TEXTURE_PATH.c_str(), config)) {
+// 		throw std::runtime_error(reader.Warning() + reader.Error());
+// 	}
+
+// 	const auto& attrib = reader.GetAttrib();
+// 	const auto& shaoes = reader.GetShapes();
+// 	const auto& materials = reader.GetMaterials();
+
+// 	load_material_textures(materials);
+// }

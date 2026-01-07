@@ -52,5 +52,5 @@ float4 fragMain(VSOutput vertIn) : SV_Target {
   // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 3);
 
   // color + repeat
-  // return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 2).rgb, 1.0);
+  // return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord).rgb, 1.0);
 }

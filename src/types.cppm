@@ -74,7 +74,16 @@ struct UniformBufferObject {
 class VmaImage {
 public:
 	VmaImage() = default;
-	VmaImage(VmaAllocator allocator, vk::ImageUsageFlags usage, vk::Format fmt, uint32_t width, uint32_t height, VmaMemoryUsage vmaMemUsage = VMA_MEMORY_USAGE_AUTO, VmaAllocationCreateFlags flags = 0);
+	VmaImage(
+		VmaAllocator allocator,
+		uint32_t width,
+		uint32_t height,
+		uint32_t mipLvls,
+		vk::ImageUsageFlags usage,
+		vk::Format fmt,
+		VmaAllocationCreateFlags flags = 0,
+		VmaMemoryUsage vmaMemUsage = VMA_MEMORY_USAGE_AUTO
+	);
 	~VmaImage();
 	VmaImage(VmaImage&& other) noexcept;
 	VmaImage& operator=(VmaImage&& other) noexcept;

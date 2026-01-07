@@ -40,16 +40,18 @@ constexpr int MAX_TEXTURES = 100;
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
-const std::string MODEL_PATH = "models/viking_room.obj";
-const std::string TEXTURE_PATH = "textures/viking_room.png";
+const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/viking_room.obj";
+const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/viking_room.png";
 
 export class Velo {
 public:
 	Velo();
 	~Velo();
 	void run();
+	void set_codam_mode();
 
 private:
+	bool codam_mode = false;
 	GLFWwindow* window;
 	vk::raii::Context context;
 	vk::raii::Instance instance = nullptr;
@@ -92,6 +94,7 @@ private:
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
 	VmaImage textureImage;
+	uint32_t mipLvls;
 	vk::raii::ImageView textureImageView = nullptr;
 	vk::raii::Sampler textureSampler = nullptr;
 	VmaImage depthImage;
@@ -140,7 +143,7 @@ private:
 		vk::PipelineStageFlags2 dstStageMask,
 		vk::ImageAspectFlags aspectFlags
 	);
-	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLvls);
 	void create_sync_objects();
 	void recreate_swapchain();
 	void cleanup_swapchain();
@@ -159,7 +162,7 @@ private:
 	void end_single_time_commands(vk::raii::CommandBuffer& cmdBuff);
 	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height);
 	void create_texture_image_view();
-	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags);
+	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mipLvls);
 	void create_texture_sampler();
 	void create_depth_resources();
 	/// vector must be ordered from most desirable to least desirable
@@ -167,6 +170,7 @@ private:
 	vk::Format find_depth_format();
 	bool has_stencil_component(vk::Format fmt);
 	void load_model();
+	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
 
 
 	void draw_frame();
