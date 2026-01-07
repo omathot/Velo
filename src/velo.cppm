@@ -40,8 +40,13 @@ constexpr int MAX_TEXTURES = 100;
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
-const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/viking_room.obj";
-const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/viking_room.png";
+#ifdef CODAM
+	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/teapot.obj";
+	const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/teapot2.mtl";
+#else
+	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/viking_room.obj";
+	const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/viking_room.png";
+#endif
 
 export class Velo {
 public:

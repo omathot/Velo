@@ -502,10 +502,14 @@ void Velo::load_model() {
 				attrib.vertices[3 * idx.vertex_index + 1],
 				attrib.vertices[3 * idx.vertex_index + 2]
 			};
-			vertex.texCoord = {
-				attrib.texcoords[2 * idx.texcoord_index + 0],
-				1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
-			};
+			if (idx.texcoord_index >= 0) {
+				vertex.texCoord = {
+					attrib.texcoords[2 * idx.texcoord_index + 0],
+					1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+				};
+			} else {
+				vertex.texCoord = {0.0f, 0.0f};
+			}
 			vertex.color = {1.0f, 1.0f, 1.0f};
 
 			if (uniqueVertices.count(vertex) == 0) {
@@ -550,24 +554,25 @@ void Velo::load_model() {
 
 void Velo::create_obj_and_texture_from_mtl() {
 	tinyobj::attrib_t attrib;
+	std::map<std::string, int> material_map;
 	std::string baseDir = "textures/";
 	std::vector<tinyobj::material_t> materials;
-	std::vector<tinyobj::shape_t> shapes;
 	std::string warning, err;
 	std::ifstream mtlstream(TEXTURE_PATH.c_str());
 	if (!mtlstream) {
 		throw std::runtime_error("failed to open mtl file");
 	}
+	tinyobj::LoadMtl(&material_map, &materials, &mtlstream, &warning, &err);
 	if (!warning.empty()) {
 		std::cout << "mtl warning: " << warning << std::endl;
 	}
 	if (!err.empty()) {
 		throw std::runtime_error("mtl error: " + err);
 	}
-	bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &warning, &err, TEXTURE_PATH.c_str(), baseDir.c_str());
-	if (!success) {
-		throw std::runtime_error(warning + err);
+	if (materials.empty()) {
+		throw std::runtime_error("No materials found in MTL file");
 	}
+
 	tinyobj::material_t& mat = materials[0];
 	uint8_t pixels[4] = {
 		static_cast<uint8_t>(mat.diffuse[0] * 255),
@@ -578,7 +583,7 @@ void Velo::create_obj_and_texture_from_mtl() {
 
 	int texW = 1;
 	int texH = 1;
-	int mips = 1;
+	mipLvls = 1;
 	vk::DeviceSize imgSize = 4;
 
 	VmaBuffer stagingBuff = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -587,12 +592,12 @@ void Velo::create_obj_and_texture_from_mtl() {
 	memcpy(data, pixels, imgSize);
 	vmaUnmapMemory(allocator, stagingBuff.allocation());
 
-	textureImage = VmaImage(allocator, texW, texH, mips, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	textureImage = VmaImage(allocator, texW, texH, mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 	std::cout << "Successfully created CODAM image\n";
 
-	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mips);
+	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLvls);
 	copy_buffer_to_image(stagingBuff, textureImage, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH));
-	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mips);
+	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLvls);
 }
 
 void Velo::enable_x11() {
