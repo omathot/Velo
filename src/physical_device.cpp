@@ -61,7 +61,13 @@ void Velo::pick_physical_device() {
 
 	if (candidates.rbegin()->first > 0) {
 		physicalDevice = std::move(candidates.rbegin()->second);
-		std::cout << "Picked physical device " << physicalDevice.getProperties().deviceName << std::endl;
+		vcontext.deviceProperties = physicalDevice.getProperties();
+		vcontext.deviceFeatures = physicalDevice.getFeatures();
+		// vcontext.is_info_gathered();
+		if (vcontext.fetch_infos) {
+			vcontext.gather_info();
+		}
+		std::cout << "Picked physical device " << vcontext.deviceProperties.deviceName << std::endl;
 	} else {
 		throw std::runtime_error("Failed to find suitable GPU");
 	}

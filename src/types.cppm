@@ -13,6 +13,19 @@ export module velo:types;
 // import std;
 import vulkan_hpp;
 
+struct VeloContext {
+	bool should_quit = false;
+	bool enabled_codam = false;
+	bool enabled_x11 = false;
+	bool fetch_infos = false;
+
+	vk::PhysicalDeviceFeatures deviceFeatures;
+	vk::PhysicalDeviceProperties deviceProperties;
+
+	bool is_info_gathered();
+	void gather_info();
+};
+
 struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 color;
@@ -108,3 +121,4 @@ struct PushConstants {
 	uint32_t objIdx;
 	uint32_t textureidx;
 };
+

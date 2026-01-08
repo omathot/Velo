@@ -112,9 +112,9 @@ file(GLOB_RECURSE MODULES "src/*.cppm")
 
 add_executable(${PROJECT_NAME})
 
-# Codam flag
 option(CODAM "Enable CODAM logic" OFF)
 option(X11 "Enabled X11 logic" OFF)
+option(INFOS "Fetching infos" OFF)
 
 if(CODAM)
        message("Enabled Codam")
@@ -123,6 +123,10 @@ endif()
 if (X11)
        message("Enabled X11")
        target_compile_definitions(${PROJECT_NAME} PRIVATE X11)
+endif()
+if (INFOS)
+       message("Enabled Infos")
+       target_compile_definitions(${PROJECT_NAME} PRIVATE INFOS)
 endif()
 
 add_dependencies(${PROJECT_NAME} shaders)

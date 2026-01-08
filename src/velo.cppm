@@ -57,10 +57,7 @@ public:
 	void enable_x11();
 
 private:
-	bool should_quit = false;
-	bool enabled_codam = false;
-	bool enabled_x11 = false;
-
+	VeloContext vcontext;
 	GLFWwindow* window;
 	vk::raii::Context context;
 	vk::raii::Instance instance = nullptr;
@@ -207,7 +204,7 @@ private:
 	static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
 		auto app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
 		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-			app->should_quit = true;
+			app->vcontext.should_quit = true;
 		}
 	}
 };

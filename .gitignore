@@ -1,1 +1,5 @@
 build/
+infos/
+shaders/shader.spv
+exec.sh
+.clangd
