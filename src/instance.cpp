@@ -20,10 +20,13 @@ void Velo::init_window() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API,  GLFW_NO_API);
 	window = glfwCreateWindow(WIDTH, HEIGHT, "LVK", nullptr, nullptr);
+
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, frameBufferResizeCb);
-	glfwSetKeyCallback(window, key_callback);
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
+	if (glfwRawMouseMotionSupported()) {
+		// glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	}
 }
 void Velo::create_instance() {
 	constexpr vk::ApplicationInfo appInfo {

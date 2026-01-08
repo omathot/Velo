@@ -1,6 +1,7 @@
 module;
 #include <GLFW/glfw3.h>
 #define TINYOBJLOADER_IMPLEMENTATION
+#include <glm/glm.hpp>
 #include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
 //
@@ -41,7 +42,7 @@ constexpr int MAX_TEXTURES = 100;
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 #ifdef CODAM
-	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/teapot.obj";
+	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/teapot2.obj";
 	const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/teapot2.mtl";
 #else
 	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/viking_room.obj";
@@ -107,12 +108,16 @@ private:
 	vk::raii::ImageView depthImageView = nullptr;
 
 
+	float totalTime = 0;
+	float dt = 0.0f;
+	float speed = 2.0f;
 	/// Total frame count for app lifespan
 	uint32_t frameCount = 0;
 	/// Frame Index for VK operations ( % MAX_FRAMES_IN_FLIGHT )
 	uint32_t frameIdx = 0;
 	/// window resized bool
 	bool frameBuffResized = false;
+	glm::vec3 position = {};
 
 	void init_window();
 	void init_vulkan();
@@ -177,7 +182,8 @@ private:
 	bool has_stencil_component(vk::Format fmt);
 	void load_model();
 	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
-	void create_obj_and_texture_from_mtl();
+	void create_texture_from_mtl();
+	void process_input();
 
 	void draw_frame();
 
@@ -200,12 +206,6 @@ private:
 		// just looks criminal
 		auto app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
 		app->frameBuffResized = true;
-	}
-	static void key_callback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
-		auto app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
-		if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-			app->vcontext.should_quit = true;
-		}
 	}
 };
 

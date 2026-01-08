@@ -50,3 +50,11 @@ void VeloContext::gather_info() {
 		featureFile.close();
 	}
 }
+
+void Velo::enable_x11() {
+	vcontext.enabled_x11 = true;
+}
+
+void Velo::enable_codam() {
+	vcontext.enabled_codam = true;
+}

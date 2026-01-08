@@ -22,19 +22,20 @@ struct VSInput {
   float3 inPos;
   float3 inColor;
   float2 inTexCoord;
+  // uint32_t matidx;
 };
 
 struct VSOutput {
   float4 pos : SV_POSITION;
   float3 fragColor;
   float2 fragTexCoord;
+  // uint32_t matIdx;
 };
 
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
   VSOutput output;
-  // Access UBO by index from push constants
   UniformBufferObject ubo = ubos[pc.objIdx];
 
   output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPos, 1.0))));

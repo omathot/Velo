@@ -69,24 +69,30 @@ void Velo::create_uniform_buffers() {
 
 void Velo::update_uniform_buffers(uint32_t currImg) {
 	static auto startTime = std::chrono::high_resolution_clock().now();
+	static auto lastTime = startTime;
 	auto currentTime = std::chrono::high_resolution_clock().now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	totalTime = std::chrono::duration<float>(currentTime - startTime).count();
+	dt = std::chrono::duration<float>(currentTime - lastTime).count();
+	lastTime = currentTime;
 
 	UniformBufferObject ubo{};
-	if (vcontext.enabled_codam) {
+	ubo.model = glm::translate(glm::mat4(1.0f), position);
+	if (vcontext.enabled_codam) { // y up
 		ubo.model = glm::rotate(
-			glm::mat4(1.0f), time * glm::radians(90.0f), // speed
+			ubo.model, // input matrix
+			totalTime * glm::radians(90.0f), // speed of rotation
 			glm::vec3(0.0f, 1.0f, 0.0f) // axis to rotate around
 		);
 		ubo.view = lookAt(
-			glm::vec3(2.0f, 2.0f, 7.0f), // camera pos
+			glm::vec3(0.0f, 3.0f, 7.0f), // camera pos
 			glm::vec3(0.0f, 1.0f, 0.0f), // target
 			glm::vec3(0.0f, 1.0f, 0.0f)  // X/Y/Z is up
 		);
-	} else {
+	} else { // keep z up for tutorial models
 		// ubo.model = 1;
 		ubo.model = glm::rotate(
-			glm::mat4(1.0f), time * glm::radians(90.0f),
+			ubo.model,
+			totalTime * glm::radians(90.0f),
 			glm::vec3(0.0f, 0.0f, 1.0f)
 		);
 		ubo.view = lookAt(

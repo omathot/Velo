@@ -30,6 +30,8 @@ struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 color;
 	glm::vec2 texCoord;
+	// currently thinking solution for codam is to add materialIdx here
+	// uint32_t materialIdx;
 
 	static vk::VertexInputBindingDescription get_bindings_description() {
 		return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};

@@ -37,10 +37,6 @@ Velo::~Velo() {
 	std::cout << "Destructing Velo\n";
 }
 
-void Velo::enable_codam() {
-	vcontext.enabled_codam = true;
-}
-
 void Velo::run() {
 	init_window();
 	init_vulkan();
@@ -64,7 +60,7 @@ void Velo::init_vulkan() {
 	create_command_pool();
 	create_depth_resources();
 	if (vcontext.enabled_codam) {
-		create_obj_and_texture_from_mtl();
+		create_texture_from_mtl();
 	} else {
 		create_texture_image();
 	}
@@ -81,6 +77,7 @@ void Velo::init_vulkan() {
 void Velo::main_loop() {
 	while (!glfwWindowShouldClose(window) && !vcontext.should_quit) {
 		glfwPollEvents();
+		process_input();
 		draw_frame();
 	}
 	device.waitIdle();
@@ -389,7 +386,7 @@ void Velo::load_model() {
 	std::cout << "Successfully loaded model, total vertices = " << vertices.size() << std::endl;;
 }
 
-void Velo::create_obj_and_texture_from_mtl() {
+void Velo::create_texture_from_mtl() {
 	tinyobj::attrib_t attrib;
 	std::map<std::string, int> material_map;
 	std::string baseDir = "textures/";
@@ -437,6 +434,24 @@ void Velo::create_obj_and_texture_from_mtl() {
 	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLvls);
 }
 
-void Velo::enable_x11() {
-	vcontext.enabled_x11 = true;
+void Velo::process_input() {
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		position.x -= speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		position.x += speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		position.y += speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		position.y -= speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		vcontext.should_quit = true;
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		position.z -= speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+		position.z += speed * dt;
+
+	double mouseX, mouseY;
+	glfwGetCursorPos(window, &mouseX, &mouseY);
+	std::println("Mouse: {},{}", mouseX, mouseY);
+	std::cout << "Mouse: " << mouseX << ", " << mouseY << "\n";
 }
