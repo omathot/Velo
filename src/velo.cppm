@@ -1,4 +1,5 @@
 module;
+#include <cstdint>
 #include <GLFW/glfw3.h>
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <glm/glm.hpp>
@@ -117,7 +118,10 @@ private:
 	uint32_t frameIdx = 0;
 	/// window resized bool
 	bool frameBuffResized = false;
+
 	glm::vec3 position = {};
+	int8_t rotation = 1;
+	float currAngle = 0.0f;
 
 	void init_window();
 	void init_vulkan();
@@ -184,6 +188,11 @@ private:
 	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
 	void create_texture_from_mtl();
 	void process_input();
+	void init_env();
+	void init_swapchain();
+	void init_commands();
+	void init_descriptors();
+	void init_default_data();
 
 	void draw_frame();
 

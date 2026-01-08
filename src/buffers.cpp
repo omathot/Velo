@@ -77,10 +77,11 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 
 	UniformBufferObject ubo{};
 	ubo.model = glm::translate(glm::mat4(1.0f), position);
+	currAngle += dt * glm::radians(90.0f) * rotation;
 	if (vcontext.enabled_codam) { // y up
 		ubo.model = glm::rotate(
 			ubo.model, // input matrix
-			totalTime * glm::radians(90.0f), // speed of rotation
+			currAngle,
 			glm::vec3(0.0f, 1.0f, 0.0f) // axis to rotate around
 		);
 		ubo.view = lookAt(
@@ -92,7 +93,7 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 		// ubo.model = 1;
 		ubo.model = glm::rotate(
 			ubo.model,
-			totalTime * glm::radians(90.0f),
+			currAngle,
 			glm::vec3(0.0f, 0.0f, 1.0f)
 		);
 		ubo.view = lookAt(

@@ -3,6 +3,7 @@ module;
 #include <vk_mem_alloc.h>
 #include <tiny_obj_loader.h>
 //
+#include <print>
 #include <cstring>
 #include <unordered_map>
 #include <iostream>
@@ -45,33 +46,13 @@ void Velo::run() {
 }
 
 void Velo::init_vulkan() {
-	create_instance();
-	setup_debug_messenger();
-	create_surface();
-	pick_physical_device();
-	create_logical_device();
-	init_vma();
-	create_swapchain();
-	create_image_views();
-	create_descriptor_set_layout();
-	create_descriptor_pools();
-	create_descriptor_sets();
-	create_graphics_pipeline();
-	create_command_pool();
-	create_depth_resources();
-	if (vcontext.enabled_codam) {
-		create_texture_from_mtl();
-	} else {
-		create_texture_image();
-	}
-	create_texture_sampler();
-	create_texture_image_view();
-	load_model();
-	create_vertex_buffer();
-	create_index_buffer();
-	create_uniform_buffers();
-	create_command_buffer();
+	init_env();
+	init_swapchain();
+	init_commands();
 	create_sync_objects();
+	init_descriptors();
+	create_graphics_pipeline();
+	init_default_data();
 }
 
 void Velo::main_loop() {
@@ -380,10 +361,11 @@ void Velo::load_model() {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertex);
 			}
+			// if already seen index to it with vertex
 			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
-	std::cout << "Successfully loaded model, total vertices = " << vertices.size() << std::endl;;
+	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << std::endl;;
 }
 
 void Velo::create_texture_from_mtl() {
@@ -440,18 +422,75 @@ void Velo::process_input() {
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		position.x += speed * dt;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		position.y += speed * dt;
+		position.z -= speed * dt;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		position.z += speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+		position.y += speed * dt;
+	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 		position.y -= speed * dt;
+
+	static bool spacePressed = false;
+	bool spacePress = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+	if (spacePress && !spacePressed) {
+		if (rotation == 0) {
+			rotation = -1;
+		}
+		rotation = -rotation;
+	}
+	spacePressed = spacePress;
+
+	static bool cPressed = false;
+	bool cPress = glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS;
+	if (cPress && !cPressed) {
+		if (rotation == 0)
+			rotation = 1;
+		else
+			rotation = 0;
+	}
+	cPressed = cPress;
+
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		vcontext.should_quit = true;
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		position.z -= speed * dt;
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		position.z += speed * dt;
 
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
-	std::println("Mouse: {},{}", mouseX, mouseY);
-	std::cout << "Mouse: " << mouseX << ", " << mouseY << "\n";
+}
+
+void Velo::init_env() {
+	create_instance();
+	setup_debug_messenger();
+	create_surface();
+	pick_physical_device();
+	create_logical_device();
+	init_vma();
+}
+
+void Velo::init_swapchain() {
+	create_swapchain();
+	create_image_views();
+}
+void Velo::init_commands() {
+	create_command_pool();
+	create_command_buffer();
+}
+void Velo::init_descriptors() {
+	create_descriptor_set_layout();
+	create_descriptor_pools();
+	create_descriptor_sets();
+}
+
+void Velo::init_default_data() {
+	if (vcontext.enabled_codam) {
+		create_texture_from_mtl();
+	} else {
+		create_texture_image();
+	}
+	create_depth_resources();
+	create_texture_sampler();
+	create_texture_image_view();
+	load_model();
+	create_vertex_buffer();
+	create_index_buffer();
+	create_uniform_buffers();
 }

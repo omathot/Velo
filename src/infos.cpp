@@ -17,7 +17,7 @@ bool VeloContext::is_info_gathered() {
 }
 
 // one day we'll have reflection
-void VeloContext::gather_info() {
+void VeloContext::gather_features_info() {
 	std::println("gathering info");
 	const char* allNames[] = {
 		"robustBufferAccess", "fullDrawIndexUint32", "imageCubeArray",

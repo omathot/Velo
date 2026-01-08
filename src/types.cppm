@@ -23,7 +23,8 @@ struct VeloContext {
 	vk::PhysicalDeviceProperties deviceProperties;
 
 	bool is_info_gathered();
-	void gather_info();
+	void gather_features_info();
+	void gather_extensions_info();
 };
 
 struct Vertex {

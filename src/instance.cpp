@@ -70,6 +70,9 @@ std::vector<char const*> Velo::get_required_extensions() {
 	uint32_t glfwExtensionsCount = 0;
 	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 	std::span glfwExtensionsSpan(glfwExtensions, glfwExtensionsCount);
+	// if (vcontext.fetch_infos) {
+	// 	vcontext.
+	// }
 	std::cout << "Required glfw extensions:\n";
 	// GLFW check
 	bool extensionsSupported = std::ranges::all_of(glfwExtensionsSpan, [&extensionProperties](auto const& glfwExtension) {

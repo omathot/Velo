@@ -65,7 +65,7 @@ void Velo::pick_physical_device() {
 		vcontext.deviceFeatures = physicalDevice.getFeatures();
 		// vcontext.is_info_gathered();
 		if (vcontext.fetch_infos) {
-			vcontext.gather_info();
+			vcontext.gather_features_info();
 		}
 		std::cout << "Picked physical device " << vcontext.deviceProperties.deviceName << std::endl;
 	} else {
