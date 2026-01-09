@@ -62,18 +62,16 @@ std::vector<char const*> Velo::get_required_extensions() {
 		handle_error("Failed to enumerate instance extension properties", propsExpected.result);
 	}
 	auto extensionProperties = *propsExpected;
-	std::cout << "Available VK extensions:\n";
-	for (uint32_t i = 0; i < extensionProperties.size(); i++) {
-		std::cout << "\t" << extensionProperties[i].extensionName << std::endl;
-	}
+	vcontext.extensionProperties = extensionProperties;
 	// GLFW extensions
 	uint32_t glfwExtensionsCount = 0;
 	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 	std::span glfwExtensionsSpan(glfwExtensions, glfwExtensionsCount);
-	// if (vcontext.fetch_infos) {
-	// 	vcontext.
-	// }
-	std::cout << "Required glfw extensions:\n";
+	vcontext.requiredGlfwExtensions = glfwExtensions;
+	vcontext.glfwCount = glfwExtensionsCount;
+	if (vcontext.fetch_infos) {
+		vcontext.gather_extensions_info();
+	}
 	// GLFW check
 	bool extensionsSupported = std::ranges::all_of(glfwExtensionsSpan, [&extensionProperties](auto const& glfwExtension) {
 									return std::ranges::any_of(extensionProperties, [&glfwExtension](auto const& extensionProperty) {
@@ -104,11 +102,10 @@ std::vector<char const*> Velo::get_required_layers() {
 		handle_error("Could not fetch available vk layers", layersExpected.result);
 	}
 	auto layerProperties = *layersExpected;
-	std::cout << "available layers:\n";
-	for (uint32_t i = 0; i < layerProperties.size(); i++) {
-		std::cout << "\t" << layerProperties[i].layerName << std::endl;
+	vcontext.layerProperties = layerProperties;
+	if (vcontext.fetch_infos) {
+		vcontext.gather_layers_info();
 	}
-
 	// layers check
 	bool layersSupported = std::ranges::all_of(requiredLayers, [&layerProperties](auto const& requiredLayer) {
 								return std::ranges::any_of(layerProperties, [&requiredLayer](auto const& layerProperty) {

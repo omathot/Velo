@@ -21,10 +21,17 @@ struct VeloContext {
 
 	vk::PhysicalDeviceFeatures deviceFeatures;
 	vk::PhysicalDeviceProperties deviceProperties;
+	std::vector<vk::LayerProperties> layerProperties;
+	std::vector<vk::ExtensionProperties> extensionProperties;
+	const char** requiredGlfwExtensions;
+	uint8_t glfwCount;
 
+	void enable_codam();
+	void enable_x11();
 	bool is_info_gathered();
 	void gather_features_info();
 	void gather_extensions_info();
+	void gather_layers_info();
 };
 
 struct Vertex {
@@ -32,27 +39,34 @@ struct Vertex {
 	glm::vec3 color;
 	glm::vec2 texCoord;
 	// currently thinking solution for codam is to add materialIdx here
-	// uint32_t materialIdx;
+	uint32_t materialIdx;
 
 	static vk::VertexInputBindingDescription get_bindings_description() {
 		return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};
 	}
-	static std::array<vk::VertexInputAttributeDescription, 3> get_attribute_description() {
+	static std::array<vk::VertexInputAttributeDescription, 4> get_attribute_description() {
 		return {
 			vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos)),
 			vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)),
-	        vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord))
+	        vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)),
+	        vk::VertexInputAttributeDescription(3, 0, vk::Format::eR32Uint, offsetof(Vertex, materialIdx))
 		};
 	}
 
 	bool operator==(const Vertex &other) const {
-		return pos == other.pos && color == other.color && texCoord == other.texCoord;
+		return pos == other.pos &&
+				color == other.color &&
+				texCoord == other.texCoord &&
+				materialIdx == other.materialIdx;
 	}
 };
 template <>
 struct std::hash<Vertex> {
 	size_t operator()(Vertex const &vertex) const noexcept {
-		return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+		return ((hash<glm::vec3>()(vertex.pos) ^
+				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.texCoord) << 1) ^
+				(hash<glm::uint32_t>()(vertex.materialIdx) << 1);
 	}
 };
 

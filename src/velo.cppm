@@ -39,6 +39,7 @@ constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 // for bindless UBOs
 constexpr int MAX_OBJECTS = 100;
 constexpr int MAX_TEXTURES = 100;
+constexpr int MAX_MATERIALS = 4;
 
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
@@ -55,8 +56,6 @@ public:
 	Velo();
 	~Velo();
 	void run();
-	void enable_codam();
-	void enable_x11();
 
 private:
 	VeloContext vcontext;
@@ -108,6 +107,9 @@ private:
 	VmaImage depthImage;
 	vk::raii::ImageView depthImageView = nullptr;
 
+	std::vector<VmaImage> materialImages;
+	std::vector<vk::raii::ImageView> materialImageViews;
+
 
 	float totalTime = 0;
 	float dt = 0.0f;
@@ -121,6 +123,7 @@ private:
 
 	glm::vec3 position = {};
 	int8_t rotation = 1;
+	float rotationSpeed = 60.0f;
 	float currAngle = 0.0f;
 
 	void init_window();
@@ -186,13 +189,14 @@ private:
 	bool has_stencil_component(vk::Format fmt);
 	void load_model();
 	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
-	void create_texture_from_mtl();
 	void process_input();
 	void init_env();
 	void init_swapchain();
 	void init_commands();
 	void init_descriptors();
 	void init_default_data();
+	void create_material_images();
+	void create_texture_material_views();
 
 	void draw_frame();
 

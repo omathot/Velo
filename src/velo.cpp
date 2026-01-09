@@ -1,5 +1,6 @@
 module;
 #include <GLFW/glfw3.h>
+#include <glm/fwd.hpp>
 #include <vk_mem_alloc.h>
 #include <tiny_obj_loader.h>
 //
@@ -22,11 +23,11 @@ Velo::Velo() {
 	std::println("Constructing Velo");
 	#if defined(CODAM)
 		std::println("\tEnabled codam mode");
-		enable_codam();
+		vcontext.enable_codam();
 	#endif
 	#if defined(X11)
 		std::println("\tEnabled X11 mode");
-		enable_x11();
+		vcontext.enable_x11();
 	#endif
 	#if defined(INFOS)
 		std::println("\tEnabled Info Fetching");
@@ -75,6 +76,7 @@ void Velo::cleanup() {
 	vertexBuff = VmaBuffer{};
 	textureImage = VmaImage{};
 	depthImage = VmaImage{};
+	materialImages.clear();
 	vmaDestroyAllocator(allocator);
 	/*
 		we delete window manually here before raii destructors run
@@ -339,81 +341,44 @@ void Velo::load_model() {
 
 	std::unordered_map<Vertex, uint32_t> uniqueVertices;
 	for (const auto& shape: shapes) {
-		for (const auto& idx: shape.mesh.indices) {
-			Vertex vertex{};
+		uint32_t idxOffset = 0;
+		for (uint32_t faceIdx = 0; faceIdx < shape.mesh.num_face_vertices.size(); faceIdx++) {
+			size_t numVerts = shape.mesh.num_face_vertices[faceIdx];
+			for (size_t i = 0; i < numVerts; i++) {
+				const auto& idx = shape.mesh.indices[idxOffset + i];
+				Vertex vertex{};
 
-			vertex.pos = {
-				attrib.vertices[3 * idx.vertex_index + 0],
-				attrib.vertices[3 * idx.vertex_index + 1],
-				attrib.vertices[3 * idx.vertex_index + 2]
-			};
-			if (idx.texcoord_index >= 0) {
-				vertex.texCoord = {
-					attrib.texcoords[2 * idx.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+				vertex.pos = {
+					attrib.vertices[3 * idx.vertex_index + 0],
+					attrib.vertices[3 * idx.vertex_index + 1],
+					attrib.vertices[3 * idx.vertex_index + 2]
 				};
-			} else {
-				vertex.texCoord = {0.0f, 0.0f};
-			}
-			vertex.color = {1.0f, 1.0f, 1.0f};
+				if (idx.texcoord_index >= 0) {
+					vertex.texCoord = {
+						attrib.texcoords[2 * idx.texcoord_index + 0],
+						1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+					};
+				} else {
+					vertex.texCoord = {0.0f, 0.0f};
+				}
+				vertex.color = {1.0f, 1.0f, 1.0f};
+				// for codam textures we need to double unique vertices count
+				// since each half will have different color
+				vertex.materialIdx = faceIdx % 2;
 
-			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
+				if (uniqueVertices.count(vertex) == 0) {
+					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					vertices.push_back(vertex);
+				}
+				// if already seen index to it with vertex
+				indices.push_back(uniqueVertices[vertex]);
 			}
-			// if already seen index to it with vertex
-			indices.push_back(uniqueVertices[vertex]);
+			idxOffset += numVerts;
+			// for (const auto& idx: shape.mesh.indices) {
+			// }
 		}
 	}
 	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << std::endl;;
-}
-
-void Velo::create_texture_from_mtl() {
-	tinyobj::attrib_t attrib;
-	std::map<std::string, int> material_map;
-	std::string baseDir = "textures/";
-	std::vector<tinyobj::material_t> materials;
-	std::string warning, err;
-	std::ifstream mtlstream(TEXTURE_PATH.c_str());
-	if (!mtlstream) {
-		throw std::runtime_error("failed to open mtl file");
-	}
-	tinyobj::LoadMtl(&material_map, &materials, &mtlstream, &warning, &err);
-	if (!warning.empty()) {
-		std::cout << "mtl warning: " << warning << std::endl;
-	}
-	if (!err.empty()) {
-		throw std::runtime_error("mtl error: " + err);
-	}
-	if (materials.empty()) {
-		throw std::runtime_error("No materials found in MTL file");
-	}
-
-	tinyobj::material_t& mat = materials[0];
-	uint8_t pixels[4] = {
-		static_cast<uint8_t>(mat.diffuse[0] * 255),
-		static_cast<uint8_t>(mat.diffuse[1] * 255),
-		static_cast<uint8_t>(mat.diffuse[2] * 255),
-		255
-	};
-
-	int texW = 1;
-	int texH = 1;
-	mipLvls = 1;
-	vk::DeviceSize imgSize = 4;
-
-	VmaBuffer stagingBuff = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-	void* data;
-	vmaMapMemory(allocator, stagingBuff.allocation(), &data);
-	memcpy(data, pixels, imgSize);
-	vmaUnmapMemory(allocator, stagingBuff.allocation());
-
-	textureImage = VmaImage(allocator, texW, texH, mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
-	std::cout << "Successfully created CODAM image\n";
-
-	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLvls);
-	copy_buffer_to_image(stagingBuff, textureImage, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH));
-	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLvls);
 }
 
 void Velo::process_input() {
@@ -450,6 +415,22 @@ void Velo::process_input() {
 	}
 	cPressed = cPress;
 
+	static bool minusPressed = false;
+	bool minusPress = glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS;
+	if (minusPress && !minusPressed) {
+		if (rotationSpeed >= 10)
+			rotationSpeed -= 10;
+	}
+	minusPressed = minusPress;
+
+	static bool plusPressed = false;
+	bool plusPress = glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS;
+	if (plusPress && !plusPressed) {
+		if (rotationSpeed <= 140)
+			rotationSpeed += 10;
+	}
+	plusPressed = plusPress;
+
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		vcontext.should_quit = true;
 
@@ -481,16 +462,100 @@ void Velo::init_descriptors() {
 }
 
 void Velo::init_default_data() {
+	create_texture_sampler();
 	if (vcontext.enabled_codam) {
-		create_texture_from_mtl();
+		// create_texture_from_mtl();
+		create_material_images();
+		create_texture_material_views();
 	} else {
 		create_texture_image();
+		create_texture_image_view();
 	}
 	create_depth_resources();
-	create_texture_sampler();
-	create_texture_image_view();
 	load_model();
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffers();
+}
+
+void Velo::create_material_images() {
+	// segfaulting because images are not created
+
+	// tinyobj::attrib_t attrib;
+	// std::map<std::string, int> material_map;
+	// std::string baseDir = "textures/";
+	// std::vector<tinyobj::material_t> materials;
+	// std::string warning, err;
+	// std::ifstream mtlstream(TEXTURE_PATH.c_str());
+
+	std::vector<glm::vec3> colors = {
+		{1.0f, 1.0f, 1.0},
+		{0.8f, 0.8f, 0.8f}
+	};
+	for (uint32_t i = 0; i < colors.size(); i++) {
+		uint8_t pixels[4] = {
+			static_cast<uint8_t>(colors[i].r * 255.0f),
+			static_cast<uint8_t>(colors[i].g * 255.0f),
+			static_cast<uint8_t>(colors[i].b * 255.0f),
+			255
+		};
+		int texW = 1;
+		int texH = 1;
+		mipLvls = 1;
+		vk::DeviceSize imgSize = 4;
+		VmaBuffer stagingBuff = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+		void* data;
+		vmaMapMemory(allocator, stagingBuff.allocation(), &data);
+		memcpy(data, pixels, imgSize);
+		vmaUnmapMemory(allocator, stagingBuff.allocation());
+
+		materialImages.push_back(VmaImage(allocator, texW, texH, 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
+		std::println("Successfully created CODAM image");
+
+		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 1);
+		copy_buffer_to_image(stagingBuff, materialImages[i], static_cast<uint32_t>(texW), static_cast<uint32_t>(texH));
+		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, 1);
+	}
+
+	// if (!mtlstream) {
+	// 	throw std::runtime_error("failed to open mtl file");
+	// }
+	// tinyobj::LoadMtl(&material_map, &materials, &mtlstream, &warning, &err);
+	// if (!warning.empty()) {
+	// 	std::cout << "mtl warning: " << warning << std::endl;
+	// }
+	// if (!err.empty()) {
+	// 	throw std::runtime_error("mtl error: " + err);
+	// }
+	// if (materials.empty()) {
+	// 	throw std::runtime_error("No materials found in MTL file");
+	// }
+
+}
+
+void Velo::create_texture_material_views() {
+	std::vector<vk::raii::ImageView> matviews;
+	std::vector<vk::DescriptorImageInfo> imageInfos;
+	for (uint32_t i = 0; i < materialImages.size(); i++) {
+		auto matView = create_image_view(materialImages[i].image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, 1);
+		materialImageViews.push_back(std::move(matView));
+		imageInfos.push_back({
+			.sampler = textureSampler,
+			.imageView = materialImageViews[i],
+			.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+		});
+	}
+
+	std::vector<vk::WriteDescriptorSet> writes;
+	for (uint32_t i = 0; i < imageInfos.size(); i++) {
+		writes.push_back({
+			.dstSet = *descriptorSets,
+			.dstBinding = 1,
+			.dstArrayElement = i,
+			.descriptorCount = 1,
+			.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+			.pImageInfo = &imageInfos[i]
+		});
+	}
+	device.updateDescriptorSets(writes, nullptr);
 }

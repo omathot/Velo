@@ -22,14 +22,14 @@ struct VSInput {
   float3 inPos;
   float3 inColor;
   float2 inTexCoord;
-  // uint32_t matidx;
+  uint32_t matidx;
 };
 
 struct VSOutput {
   float4 pos : SV_POSITION;
   float3 fragColor;
   float2 fragTexCoord;
-  // uint32_t matIdx;
+  uint32_t matIdx;
 };
 
 
@@ -41,14 +41,19 @@ VSOutput vertMain(VSInput input) {
   output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPos, 1.0))));
   output.fragColor = input.inColor;
   output.fragTexCoord = input.inTexCoord;
+  output.matIdx = input.matidx;
   return output;
 }
 
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_Target {
-  // default
-  return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord);
+  // default (not codam)
+  // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord);
+  // default (codam)
+  return textures[NonUniformResourceIndex(vertIn.matIdx)].Sample(vertIn.fragTexCoord);
 
+
+  // fun effects
   // repeat
   // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 3);
 

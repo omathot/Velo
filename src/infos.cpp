@@ -51,10 +51,41 @@ void VeloContext::gather_features_info() {
 	}
 }
 
-void Velo::enable_x11() {
-	vcontext.enabled_x11 = true;
+void VeloContext::gather_extensions_info() {
+	std::ofstream vkExtensionFile("infos/available_vk_extensions.txt");
+	if (vkExtensionFile.is_open()) {
+		vkExtensionFile << "Available VK Exts:\n";
+		for (const auto& property: extensionProperties) {
+			vkExtensionFile << property.extensionName << "\n";
+		}
+		vkExtensionFile.close();
+	}
+
+	std::ofstream glfwExtsfile("infos/required_glfw_extensions.txt");
+	if (glfwExtsfile.is_open()) {
+		std::span glfwSpan(requiredGlfwExtensions, glfwCount);
+		glfwExtsfile << "Required GLFW extensions:\n";
+		for (const auto& line: glfwSpan) {
+			glfwExtsfile << line << "\n";
+		}
+		glfwExtsfile.close();
+	}
 }
 
-void Velo::enable_codam() {
-	vcontext.enabled_codam = true;
+void VeloContext::gather_layers_info() {
+	std::ofstream layersFile("infos/available_layers.txt");
+	if (layersFile.is_open()) {
+		layersFile << "Available layers:\n";
+		for (const auto& property: layerProperties) {
+			layersFile << property.layerName << ":\n\t" << property.description << ". impl ver=" << property.implementationVersion << std::endl;
+		}
+		layersFile.close();
+	}
+}
+
+void VeloContext::enable_x11() {
+	enabled_x11 = true;
+}
+void VeloContext::enable_codam() {
+	enabled_codam = true;
 }
