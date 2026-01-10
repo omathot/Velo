@@ -27,10 +27,11 @@ void Velo::create_logical_device() {
 		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT
 	> featureChain = {
 		{.features = { // 1.0
+			.geometryShader = true,
 			.samplerAnisotropy = true
 		}},
 		{ // 1.1
-			.shaderDrawParameters = true
+			.shaderDrawParameters = true,
 		},
 		{ // 1.2
 			.descriptorIndexing = true,
@@ -38,6 +39,7 @@ void Velo::create_logical_device() {
 			.shaderSampledImageArrayNonUniformIndexing = true,
 			.descriptorBindingUniformBufferUpdateAfterBind = true,
 			.descriptorBindingSampledImageUpdateAfterBind = true,
+			.descriptorBindingStorageBufferUpdateAfterBind = true,
 			.descriptorBindingUpdateUnusedWhilePending = true,
 			.descriptorBindingPartiallyBound = true,
 			.descriptorBindingVariableDescriptorCount = true,

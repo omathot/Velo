@@ -74,6 +74,7 @@ void Velo::cleanup() {
 	uniformBuffs.clear();
 	indexBuff = VmaBuffer{};
 	vertexBuff = VmaBuffer{};
+	materialIdxBuff = VmaBuffer{};
 	textureImage = VmaImage{};
 	depthImage = VmaImage{};
 	materialImages.clear();
@@ -129,8 +130,9 @@ void Velo::draw_frame() {
 	uint64_t timelineValue = ++frameCount;
 	frameIdx = (timelineValue - 1) % MAX_FRAMES_IN_FLIGHT;
 	uint64_t waitValue = 0;
-	if (timelineValue > MAX_FRAMES_IN_FLIGHT)
+	if (timelineValue > MAX_FRAMES_IN_FLIGHT) {
 		waitValue = timelineValue - MAX_FRAMES_IN_FLIGHT;
+	}
 	vk::SemaphoreWaitInfo waitInfo = {
 		.semaphoreCount = 1,
 		.pSemaphores = &*timelineSem,
@@ -341,41 +343,29 @@ void Velo::load_model() {
 
 	std::unordered_map<Vertex, uint32_t> uniqueVertices;
 	for (const auto& shape: shapes) {
-		uint32_t idxOffset = 0;
-		for (uint32_t faceIdx = 0; faceIdx < shape.mesh.num_face_vertices.size(); faceIdx++) {
-			size_t numVerts = shape.mesh.num_face_vertices[faceIdx];
-			for (size_t i = 0; i < numVerts; i++) {
-				const auto& idx = shape.mesh.indices[idxOffset + i];
-				Vertex vertex{};
-
-				vertex.pos = {
-					attrib.vertices[3 * idx.vertex_index + 0],
-					attrib.vertices[3 * idx.vertex_index + 1],
-					attrib.vertices[3 * idx.vertex_index + 2]
+		for (const auto& idx: shape.mesh.indices) {
+			Vertex vertex{};
+			vertex.pos = {
+				attrib.vertices[3 * idx.vertex_index + 0],
+				attrib.vertices[3 * idx.vertex_index + 1],
+				attrib.vertices[3 * idx.vertex_index + 2]
+			};
+			if (idx.texcoord_index >= 0) {
+				vertex.texCoord = {
+					attrib.texcoords[2 * idx.texcoord_index + 0],
+					1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
 				};
-				if (idx.texcoord_index >= 0) {
-					vertex.texCoord = {
-						attrib.texcoords[2 * idx.texcoord_index + 0],
-						1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
-					};
-				} else {
-					vertex.texCoord = {0.0f, 0.0f};
-				}
-				vertex.color = {1.0f, 1.0f, 1.0f};
-				// for codam textures we need to double unique vertices count
-				// since each half will have different color
-				vertex.materialIdx = faceIdx % 2;
-
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.push_back(vertex);
-				}
-				// if already seen index to it with vertex
-				indices.push_back(uniqueVertices[vertex]);
+			} else {
+				vertex.texCoord = {0.0f, 0.0f};
 			}
-			idxOffset += numVerts;
-			// for (const auto& idx: shape.mesh.indices) {
-			// }
+			vertex.color = {1.0f, 1.0f, 1.0f};
+
+			if (uniqueVertices.count(vertex) == 0) {
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
+			}
+			// if already seen index to it with vertex
+			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
 	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << std::endl;;
@@ -464,23 +454,24 @@ void Velo::init_descriptors() {
 void Velo::init_default_data() {
 	create_texture_sampler();
 	if (vcontext.enabled_codam) {
-		// create_texture_from_mtl();
 		create_material_images();
 		create_texture_material_views();
+		load_model_per_face_material();
 	} else {
 		create_texture_image();
 		create_texture_image_view();
+		load_model();
 	}
 	create_depth_resources();
-	load_model();
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffers();
+	if (vcontext.enabled_codam) {
+		create_material_index_buffer();
+	}
 }
 
 void Velo::create_material_images() {
-	// segfaulting because images are not created
-
 	// tinyobj::attrib_t attrib;
 	// std::map<std::string, int> material_map;
 	// std::string baseDir = "textures/";
@@ -490,7 +481,9 @@ void Velo::create_material_images() {
 
 	std::vector<glm::vec3> colors = {
 		{1.0f, 1.0f, 1.0},
-		{0.8f, 0.8f, 0.8f}
+		{0.8f, 0.8f, 0.8f},
+		{0.6f, 0.6f, 0.6f},
+		{0.4f, 0.4f, 0.4f},
 	};
 	for (uint32_t i = 0; i < colors.size(); i++) {
 		uint8_t pixels[4] = {
@@ -558,4 +551,60 @@ void Velo::create_texture_material_views() {
 		});
 	}
 	device.updateDescriptorSets(writes, nullptr);
+}
+
+void Velo::load_model_per_face_material() {
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+	std::string basedir = "/home/omathot/dev/cpp/velo/models/";
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str(), basedir.c_str())) {
+		throw std::runtime_error(warn + err);
+	}
+
+	std::unordered_map<Vertex, uint32_t> uniqueVertices;
+	uint32_t globalFaceIdx = 0;
+	materialIndices.clear();
+
+	for (const auto& shape: shapes) {
+		uint32_t idxOffset = 0;
+		for (uint32_t faceIdx = 0; faceIdx < shape.mesh.num_face_vertices.size(); faceIdx++) {
+			int matId = globalFaceIdx % 4;
+			if (matId < 0)
+				matId = 0;
+
+			materialIndices.push_back(static_cast<uint32_t>(matId));
+			size_t numVerts = shape.mesh.num_face_vertices[faceIdx];
+			for (size_t i = 0; i < numVerts; i++) {
+				const auto& idx = shape.mesh.indices[idxOffset + i];
+				Vertex vertex{};
+				vertex.pos = {
+					attrib.vertices[3 * idx.vertex_index + 0],
+					attrib.vertices[3 * idx.vertex_index + 1],
+					attrib.vertices[3 * idx.vertex_index + 2]
+				};
+				if (idx.texcoord_index >= 0) {
+					vertex.texCoord = {
+						attrib.texcoords[2 * idx.texcoord_index + 0],
+						1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+					};
+				} else {
+					vertex.texCoord = {0.0f, 0.0f};
+				}
+				vertex.color = {1.0f, 1.0f, 1.0f};
+
+				if (uniqueVertices.count(vertex) == 0) {
+					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					vertices.push_back(vertex);
+				}
+				// if already seen index to it with vertex
+				indices.push_back(uniqueVertices[vertex]);
+			}
+			idxOffset += numVerts;
+			globalFaceIdx++;
+		}
+	}
+	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << std::endl;;
 }

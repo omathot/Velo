@@ -67,6 +67,34 @@ void Velo::create_uniform_buffers() {
 	}
 }
 
+void Velo::create_material_index_buffer() {
+	vk::DeviceSize buffSize = sizeof(uint32_t) * materialIndices.size();
+	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+
+	void *dataStaging;
+	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
+	memcpy(dataStaging, materialIndices.data(), buffSize);
+	vmaUnmapMemory(allocator, stagingBuff.allocation());
+
+	materialIdxBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	copy_buffer(stagingBuff, materialIdxBuff, buffSize);
+
+	vk::DescriptorBufferInfo matBuffInfo {
+		.buffer = materialIdxBuff.buffer(),
+		.offset = 0,
+		.range = buffSize
+	};
+	vk::WriteDescriptorSet writeSet {
+		.dstSet = *descriptorSets,
+		.dstBinding = 2,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.pBufferInfo = &matBuffInfo
+	};
+	device.updateDescriptorSets(writeSet, nullptr);
+}
+
 void Velo::update_uniform_buffers(uint32_t currImg) {
 	static auto startTime = std::chrono::high_resolution_clock().now();
 	static auto lastTime = startTime;

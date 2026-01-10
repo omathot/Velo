@@ -10,7 +10,7 @@ module velo;
 import vulkan_hpp;
 
 void Velo::create_graphics_pipeline() {
-	auto shaderCode = read_file("/home/omathot/dev/cpp/velo/shaders/shader.spv");
+	auto shaderCode = read_file(SHADER_PATH.c_str());
 	vk::raii::ShaderModule shaderModule = create_shader_module(shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderInfo{
@@ -157,9 +157,16 @@ void Velo::create_descriptor_set_layout() {
 		.descriptorCount = MAX_OBJECTS,
 		.stageFlags = vk::ShaderStageFlagBits::eFragment
 	};
-	std::array<vk::DescriptorSetLayoutBinding, 2> bindings = {uniformBinding, textureBinding};
-	std::array<vk::DescriptorBindingFlags, 2> bindingsFlags
+	vk::DescriptorSetLayoutBinding materialIdxBinding {
+		.binding = 2,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eFragment
+	};
+	std::array<vk::DescriptorSetLayoutBinding, 3> bindings = {uniformBinding, textureBinding, materialIdxBinding};
+	std::array<vk::DescriptorBindingFlags, 3> bindingsFlags
 	{
+		vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
 		vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
 		vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind
 	};
@@ -182,9 +189,10 @@ void Velo::create_descriptor_set_layout() {
 }
 
 void Velo::create_descriptor_pools() {
-	std::array<vk::DescriptorPoolSize, 2> poolSizes = {{
+	std::array<vk::DescriptorPoolSize, 3> poolSizes = {{
 		{vk::DescriptorType::eUniformBuffer, MAX_OBJECTS},
-		{vk::DescriptorType::eCombinedImageSampler, MAX_TEXTURES}
+		{vk::DescriptorType::eCombinedImageSampler, MAX_TEXTURES},
+		{vk::DescriptorType::eStorageBuffer, 1}
 	}};
 	vk::DescriptorPoolCreateInfo poolInfo {
 		.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,

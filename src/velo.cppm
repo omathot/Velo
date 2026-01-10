@@ -50,6 +50,7 @@ constexpr uint32_t HEIGHT = 600;
 	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/viking_room.obj";
 	const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/viking_room.png";
 #endif
+const std::string SHADER_PATH = "/home/omathot/dev/cpp/velo/shaders/shader.spv";
 
 export class Velo {
 public:
@@ -97,6 +98,7 @@ private:
 	std::vector<uint32_t> indices;
 	VmaBuffer vertexBuff;
 	VmaBuffer indexBuff;
+	VmaBuffer materialIdxBuff;
 
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
@@ -109,6 +111,7 @@ private:
 
 	std::vector<VmaImage> materialImages;
 	std::vector<vk::raii::ImageView> materialImageViews;
+	std::vector<uint32_t> materialIndices;
 
 
 	float totalTime = 0;
@@ -197,6 +200,8 @@ private:
 	void init_default_data();
 	void create_material_images();
 	void create_texture_material_views();
+	void load_model_per_face_material();
+	void create_material_index_buffer();
 
 	void draw_frame();
 
