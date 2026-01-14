@@ -1,0 +1,27 @@
+Checks: >
+  -*,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-type-union-access,
+  -readability-redundant-declaration,
+  -readability-uppercase-literal-suffix,
+  -readability-implicit-bool-conversion,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -readability-math-missing-parentheses,
+  -cppcoreguidelines-macro-usage,
+  -readability-braces-around-statements,
+  -modernize-use-auto,
+  -cppcoreguidelines-avoid-c-arrays,
+  -readability-isolate-declaration
+
+WarningsAsErrors: ''
+HeaderFilterRegex: 'src/.*'
+FormatStyle: file
+ExcludeHeaderFilterRegex: '.*(_deps|build|/usr/).*'

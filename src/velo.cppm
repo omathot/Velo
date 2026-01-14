@@ -125,7 +125,7 @@ private:
 	bool frameBuffResized = false;
 
 	glm::vec3 position = {};
-	int8_t rotation = 1;
+	int rotation = 1;
 	float rotationSpeed = 60.0f;
 	float currAngle = 0.0f;
 
@@ -164,7 +164,7 @@ private:
 		vk::PipelineStageFlags2 dstStageMask,
 		vk::ImageAspectFlags aspectFlags
 	);
-	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLvls);
+	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mips);
 	void create_sync_objects();
 	void recreate_swapchain();
 	void cleanup_swapchain();
@@ -183,7 +183,7 @@ private:
 	void end_single_time_commands(vk::raii::CommandBuffer& cmdBuff);
 	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height);
 	void create_texture_image_view();
-	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mipLvls);
+	vk::raii::ImageView create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mips);
 	void create_texture_sampler();
 	void create_depth_resources();
 	/// vector must be ordered from most desirable to least desirable
@@ -235,7 +235,7 @@ std::vector<char> read_file(const std::string& filename) {
 		throw std::runtime_error("failed to open file");
 	}
 
-	std::vector<char> buffer(file.tellg());
+	std::vector<char> buffer(static_cast<ulong>(file.tellg()));
 	file.seekg(0, std::ios::beg);
 	file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
 	file.close();

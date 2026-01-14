@@ -8,16 +8,13 @@ struct PushConstants {
   int objIdx;
   uint textureIdx;
 };
-
 [[vk::push_constant]]
 PushConstants pc;
 
 [[vk::binding(0, 0)]]
 ConstantBuffer<UniformBufferObject> ubos[];
-
 [[vk::binding(1, 0)]]
 Sampler2D textures[];
-
 [[vk_binding(2, 0)]]
 StructuredBuffer<uint> materialIndices;
 
@@ -32,7 +29,6 @@ struct VSOutput {
   float3 fragColor;
   float2 fragTexCoord;
 };
-
 
 [shader("vertex")]
 VSOutput vertMain(VSInput input) {
@@ -52,12 +48,11 @@ float4 fragMain(VSOutput vertIn, uint primitiveID : SV_PrimitiveID) : SV_Target 
   // default (codam)
   uint matIdx = materialIndices[primitiveID];
   return textures[NonUniformResourceIndex(matIdx)].Sample(vertIn.fragTexCoord);
-
-
-  // fun effects
-  // repeat
-  // return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 3);
-
-  // color + repeat
-  // return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord).rgb, 1.0);
 }
+
+// fun effects
+// repeat
+// return textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord * 3);
+
+// color + repeat
+// return float4(vertIn.fragColor * textures[NonUniformResourceIndex(pc.textureIdx)].Sample(vertIn.fragTexCoord).rgb, 1.0);

@@ -44,11 +44,11 @@ void Velo::create_swapchain() {
 		.presentMode = mode,
 		.clipped = true,
 	};
-	uint32_t indices[] = {graphicsIdx, presentIdx};
+	std::array<uint32_t, 2> familyIndices = {graphicsIdx, presentIdx};
 	if (graphicsIdx != presentIdx) {
 		swapInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 		swapInfo.queueFamilyIndexCount = 2;
-		swapInfo.pQueueFamilyIndices = indices;
+		swapInfo.pQueueFamilyIndices = familyIndices.data();
 	} else {
 		swapInfo.imageSharingMode = vk::SharingMode::eExclusive;
 	}
@@ -94,20 +94,20 @@ vk::Extent2D Velo::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabili
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
 	}
-	int width, height;
+	int width = 0, height = 0;
 	glfwGetFramebufferSize(window, &width, &height);
 	return {
-		std::clamp<uint32_t>(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-		std::clamp<uint32_t>(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
+		.width = std::clamp<uint32_t>(static_cast<uint32_t>(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+		.height = std::clamp<uint32_t>(static_cast<uint32_t>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
 	};
 }
 
 void Velo::create_image_views() {
 	swapchainImgViews.clear();
-	for (uint32_t i = 0; i < swapchainImgs.size(); i++) {
-		auto imgView = create_image_view(swapchainImgs[i], swapchainImgFmt, vk::ImageAspectFlagBits::eColor, 1);
+	for (auto swapchainImg : swapchainImgs) {
+		auto imgView = create_image_view(swapchainImg, swapchainImgFmt, vk::ImageAspectFlagBits::eColor, 1);
 		swapchainImgViews.emplace_back(std::move(imgView));
 	}
-	std::cout << "Successfully created image views, imgViews vec size: " << swapchainImgViews.size() << std::endl;;
+	std::cout << "Successfully created image views, imgViews vec size: " << swapchainImgViews.size() << '\n';
 }
 

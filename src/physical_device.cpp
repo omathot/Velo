@@ -23,11 +23,11 @@ void Velo::pick_physical_device() {
 	}
 
 	std::multimap<int, vk::raii::PhysicalDevice> candidates{};
-	for (const auto& device : devices) {
-		auto deviceProperties = device.getProperties();
-		auto deviceFeatures = device.getFeatures();
-		auto queueFamilies = device.getQueueFamilyProperties();
-		auto extsExpected = device.enumerateDeviceExtensionProperties();
+	for (const auto& dev : devices) {
+		auto deviceProperties = dev.getProperties();
+		auto deviceFeatures = dev.getFeatures();
+		auto queueFamilies = dev.getQueueFamilyProperties();
+		auto extsExpected = dev.enumerateDeviceExtensionProperties();
 		if (!extsExpected.has_value()) {
 			handle_error("Failed to query device for extensions", extsExpected.result);
 		}
@@ -56,7 +56,7 @@ void Velo::pick_physical_device() {
 			score += 1000;
 		}
 		score += deviceProperties.limits.maxImageDimension2D;
-		candidates.insert(std::make_pair(score, std::move(const_cast<vk::raii::PhysicalDevice&>(device))));
+		candidates.insert(std::make_pair(score, std::move(const_cast<vk::raii::PhysicalDevice&>(dev))));
 	}
 
 	if (candidates.rbegin()->first > 0) {
@@ -81,37 +81,37 @@ std::tuple<uint32_t, uint32_t> Velo::find_queue_families(const std::vector<vk::Q
 	if (graphicsQueueFamily == qfps.end()) {
 		throw std::runtime_error("No graphics queue family found");
 	}
-	uint32_t graphicsIdx = static_cast<uint32_t>(std::distance(qfps.begin(), graphicsQueueFamily));
+	uint32_t graphicsIndex = static_cast<uint32_t>(std::distance(qfps.begin(), graphicsQueueFamily));
 
 	// present queue
-	auto graphicsSupportPresExpected = physicalDevice.getSurfaceSupportKHR(graphicsIdx, surface);
+	auto graphicsSupportPresExpected = physicalDevice.getSurfaceSupportKHR(graphicsIndex, surface);
 	if (!graphicsSupportPresExpected.has_value()) {
 		handle_error("Failed to querty for surface support", graphicsSupportPresExpected.result);
 	}
 	vk::Bool32 supportsPresent = *graphicsSupportPresExpected;
-	uint32_t presentIdx = UINT32_MAX;
+	uint32_t presentIndex = UINT32_MAX;
 	if (supportsPresent) {
 		// graphics queue family also supports present
-		presentIdx = graphicsIdx;
+		presentIndex = graphicsIndex;
 	} else {
 		for (uint32_t i = 0; i < qfps.size(); i++) {
-			if (i == graphicsIdx) continue;
+			if (i == graphicsIndex) continue;
 			auto presSupportExpected = physicalDevice.getSurfaceSupportKHR(i, surface);
 			if (!presSupportExpected.has_value()) {
 				handle_error("Failed to query for present support", presSupportExpected.result);
 			}
 			vk::Bool32 presentSupport = *presSupportExpected;
 			if (presentSupport) {
-				presentIdx = i;
+				presentIndex = i;
 				break;
 			}
 		}
 	}
-	if (presentIdx == UINT32_MAX) {
+	if (presentIndex == UINT32_MAX) {
 		throw std::runtime_error("Failed to find present queue family");
 	}
 
-	std::cout << "Found Graphics and Present queue families, respectively: [" << graphicsIdx << "], [" << presentIdx << "]\n";
+	std::cout << "Found Graphics and Present queue families, respectively: [" << graphicsIndex << "], [" << presentIndex << "]\n";
 
-	return {graphicsIdx, presentIdx};
+	return {graphicsIndex, presentIndex};
 }

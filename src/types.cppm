@@ -24,7 +24,7 @@ struct VeloContext {
 	std::vector<vk::LayerProperties> layerProperties;
 	std::vector<vk::ExtensionProperties> extensionProperties;
 	const char** requiredGlfwExtensions;
-	uint8_t glfwCount;
+	uint32_t glfwCount;
 
 	void enable_codam();
 	void enable_x11();

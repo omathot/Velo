@@ -346,14 +346,14 @@ void Velo::load_model() {
 		for (const auto& idx: shape.mesh.indices) {
 			Vertex vertex{};
 			vertex.pos = {
-				attrib.vertices[3 * idx.vertex_index + 0],
-				attrib.vertices[3 * idx.vertex_index + 1],
-				attrib.vertices[3 * idx.vertex_index + 2]
+				attrib.vertices[3 * static_cast<ulong>(idx.vertex_index) + 0],
+				attrib.vertices[3 * static_cast<ulong>(idx.vertex_index) + 1],
+				attrib.vertices[3 * static_cast<ulong>(idx.vertex_index) + 2]
 			};
 			if (idx.texcoord_index >= 0) {
 				vertex.texCoord = {
-					attrib.texcoords[2 * idx.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+					attrib.texcoords[2 * static_cast<ulong>(idx.texcoord_index) + 0],
+					1.0f - attrib.texcoords[2 * static_cast<ulong>(idx.texcoord_index) + 1]
 				};
 			} else {
 				vertex.texCoord = {0.0f, 0.0f};
@@ -502,7 +502,7 @@ void Velo::create_material_images() {
 		memcpy(data, pixels, imgSize);
 		vmaUnmapMemory(allocator, stagingBuff.allocation());
 
-		materialImages.push_back(VmaImage(allocator, texW, texH, 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
+		materialImages.push_back(VmaImage(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
 		std::println("Successfully created CODAM image");
 
 		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 1);
@@ -581,14 +581,14 @@ void Velo::load_model_per_face_material() {
 				const auto& idx = shape.mesh.indices[idxOffset + i];
 				Vertex vertex{};
 				vertex.pos = {
-					attrib.vertices[3 * idx.vertex_index + 0],
-					attrib.vertices[3 * idx.vertex_index + 1],
-					attrib.vertices[3 * idx.vertex_index + 2]
+					attrib.vertices[3 * static_cast<ulong>(idx.vertex_index) + 0],
+					attrib.vertices[3 * static_cast<ulong>(idx.vertex_index) + 1],
+					attrib.vertices[3 * static_cast<ulong>(idx.vertex_index) + 2]
 				};
 				if (idx.texcoord_index >= 0) {
 					vertex.texCoord = {
-						attrib.texcoords[2 * idx.texcoord_index + 0],
-						1.0f - attrib.texcoords[2 * idx.texcoord_index + 1]
+						attrib.texcoords[2 * static_cast<ulong>(idx.texcoord_index) + 0],
+						1.0f - attrib.texcoords[2 * static_cast<ulong>(idx.texcoord_index) + 1]
 					};
 				} else {
 					vertex.texCoord = {0.0f, 0.0f};

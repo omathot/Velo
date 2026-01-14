@@ -12,7 +12,7 @@ module velo;
 import vulkan_hpp;
 
 
-vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mipLvls) {
+vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mips) {
 	vk::ImageViewCreateInfo viewInfo {
 		.image = img,
 		.viewType = vk::ImageViewType::e2D,
@@ -20,7 +20,7 @@ vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt
 		.subresourceRange = {
 			.aspectMask = aspectFlags,
 			.baseMipLevel = 0,
-			.levelCount = mipLvls,
+			.levelCount = mips,
 			.baseArrayLayer = 0,
 			.layerCount = 1
 		}
@@ -40,7 +40,7 @@ void Velo::create_texture_image() {
 	if (!pixels) {
 		throw std::runtime_error("Failed to load pixels from texture");
 	}
-	vk::DeviceSize imgSize = texWidth * texHeight * 4; // 4 bytes per pixel
+	vk::DeviceSize imgSize = static_cast<vk::DeviceSize>(texWidth * texHeight) * 4; // 4 bytes per pixel
 	mipLvls = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 	VmaBuffer stagingBuffer = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
@@ -50,7 +50,7 @@ void Velo::create_texture_image() {
 	vmaUnmapMemory(allocator, stagingBuffer.allocation());
 
 	stbi_image_free(pixels);
-	textureImage = VmaImage(allocator, texWidth, texHeight, mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
+	textureImage = VmaImage(allocator, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
 	std::cout << "Successfully created image\n";
 
 	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLvls);
@@ -58,7 +58,7 @@ void Velo::create_texture_image() {
 	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLvls);
 }
 
-void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLvls) {
+void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mips) {
 	auto cmdBuff = begin_single_time_commands();
 
 	vk::ImageMemoryBarrier2 barrier = {
@@ -70,7 +70,7 @@ void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLay
 		.subresourceRange = {
 			.aspectMask = vk::ImageAspectFlagBits::eColor,
 			.baseMipLevel = 0,
-			.levelCount = mipLvls,
+			.levelCount = mips,
 			.baseArrayLayer = 0,
 			.layerCount = 1
 		}

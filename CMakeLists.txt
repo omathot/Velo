@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
-set(CMAKE_CXX_FLAGS "-Wall -Werror -Wextra")
 
 find_package(Vulkan REQUIRED)
 include(FetchContent)
@@ -134,6 +133,15 @@ target_sources(${PROJECT_NAME}
   PRIVATE ${SRCS}
   PRIVATE FILE_SET cxx_modules TYPE CXX_MODULES FILES ${MODULES}
 )
+
+set(SANITIZER_FLAGS -fsanitize=address -fsanitize=undefined)
+target_compile_options(${PROJECT_NAME} PRIVATE
+       -Wall -Werror -Wextra -Wshadow -Wconversion --coverage ${SANITIZER_FLAGS}
+)
+target_link_options(${PROJECT_NAME} PRIVATE
+       --coverage ${SANITIZER_FLAGS}
+)
+
 # set_target_properties(${PROJECT_NAME} PROPERTIES CXX_MODULE_STD 1)
 target_link_libraries(${PROJECT_NAME} PRIVATE
        Vulkan::cppm
@@ -143,3 +151,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
        imgui::imgui
        tinyobjloader
 )
+
+
+option(TIDY "Enable clang-tidy pass" OFF)
+if (TIDY)
+       find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+       if(CLANG_TIDY_EXE)
+              set_target_properties(${PROJECT_NAME} PROPERTIES
+                     CXX_CLANG_TIDY "${CLANG_TIDY_EXE}"
+              )
+              message(STATUS "clang-tidy enabled: ${CLANG_TIDY_EXE}")
+       else()
+              message(WARNING "clang-tidy not found")
+       endif()
+endif()

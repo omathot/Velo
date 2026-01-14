@@ -105,7 +105,7 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 
 	UniformBufferObject ubo{};
 	ubo.model = glm::translate(glm::mat4(1.0f), position);
-	currAngle += dt * glm::radians(rotationSpeed) * rotation;
+	currAngle += dt * glm::radians(rotationSpeed) * static_cast<float>(rotation);
 	if (vcontext.enabled_codam) { // y up
 		ubo.model = glm::rotate(
 			ubo.model, // input matrix
@@ -202,7 +202,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets, nullptr);
 	PushConstants pc {.objIdx = frameIdx, .textureidx = 0};
 	cmdBuffer.pushConstants<PushConstants>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pc);
-	cmdBuffer.drawIndexed(indices.size(), 1, 0, 0, 0);
+	cmdBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 	cmdBuffer.endRendering();
 
 	transition_image_layout(
