@@ -604,7 +604,8 @@ void Velo::load_model_per_face_material() {
 	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << '\n';
 }
 
-// utils
-bool has_stencil_component(vk::Format fmt) {
-	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
-}
+// util
+// unused for now
+// static bool has_stencil_component(vk::Format fmt) {
+// 	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
+// }

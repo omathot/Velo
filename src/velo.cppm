@@ -237,7 +237,7 @@ std::vector<char> read_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
-bool has_stencil_component(vk::Format fmt);
+// bool has_stencil_component(vk::Format fmt);
 void handle_error(const char* msg, vk::Result error);
-vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
-vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes);
+// vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+// vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes);

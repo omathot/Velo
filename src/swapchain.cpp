@@ -7,6 +7,9 @@ module velo;
 // import std;
 import vulkan_hpp;
 
+static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes);
+
 void Velo::create_swapchain() {
 	auto capabilitiesExpected = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 	if (!capabilitiesExpected.has_value()) {
@@ -93,7 +96,7 @@ void Velo::create_image_views() {
 
 
 // utils
-vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
+static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
 	// srgb cause most common and best
 	for (const auto& format: availableFormats) {
 		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
@@ -104,7 +107,7 @@ vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFor
 	return availableFormats[0];
 }
 
-vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes) {
+static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes) {
 	// mailbox if available
 	for (const auto& mode: availableModes) {
 		if (mode == vk::PresentModeKHR::eMailbox) {
