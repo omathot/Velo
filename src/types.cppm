@@ -14,17 +14,17 @@ export module velo:types;
 import vulkan_hpp;
 
 struct VeloContext {
-	bool should_quit = false;
-	bool enabled_codam = false;
-	bool enabled_x11 = false;
-	bool fetch_infos = false;
+	bool should_quit{};
+	bool enabled_codam{};
+	bool enabled_x11{};
+	bool fetch_infos{};
 
-	vk::PhysicalDeviceFeatures deviceFeatures;
-	vk::PhysicalDeviceProperties deviceProperties;
+	vk::PhysicalDeviceFeatures deviceFeatures{};
+	vk::PhysicalDeviceProperties deviceProperties{};
 	std::vector<vk::LayerProperties> layerProperties;
 	std::vector<vk::ExtensionProperties> extensionProperties;
-	const char** requiredGlfwExtensions;
-	uint32_t glfwCount;
+	const char** requiredGlfwExtensions{};
+	uint32_t glfwCount{};
 
 	void enable_codam();
 	void enable_x11();
@@ -35,13 +35,16 @@ struct VeloContext {
 };
 
 struct Vertex {
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
+	glm::vec3 pos{};
+	glm::vec3 color{};
+	glm::vec2 texCoord{};
 
 	static vk::VertexInputBindingDescription get_bindings_description() {
-		return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};
-	}
+		return {
+			.binding = 0,
+			.stride = sizeof(Vertex),
+			.inputRate = vk::VertexInputRate::eVertex};
+		};
 	static std::array<vk::VertexInputAttributeDescription, 3> get_attribute_description() {
 		return {
 			vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos)),
@@ -77,17 +80,17 @@ public:
 	VmaBuffer& operator=(const VmaBuffer&) = delete;
 	explicit operator bool() const { return _buffer != VK_NULL_HANDLE; }
 
-	VkBuffer get() const;
-	vk::Buffer buffer() const;
 	operator VkBuffer() const;
-	VmaAllocation allocation() const;
-	void* mapped_data() const;
+	[[nodiscard]] VkBuffer get() const;
+	[[nodiscard]] vk::Buffer buffer() const;
+	[[nodiscard]] VmaAllocation allocation() const;
+	[[nodiscard]] void* mapped_data() const;
 
 private:
 	VmaAllocator vmaAllocator = VK_NULL_HANDLE;
 	VkBuffer _buffer = VK_NULL_HANDLE;
 	VmaAllocation vmaAllocation = VK_NULL_HANDLE;
-	void* mapped = nullptr;
+	void* mapped{};
 };
 
 struct UniformBufferObject {
@@ -116,21 +119,21 @@ public:
 	VmaImage& operator=(const VmaImage&) = delete;
 	explicit operator bool() const { return _image != VK_NULL_HANDLE; }
 
-	VkImage get() const;
-	vk::Image image() const;
 	operator VkImage() const;
-	VmaAllocation allocation() const;
-	void* mapped_data() const;
+	[[nodiscard]] VkImage get() const;
+	[[nodiscard]] vk::Image image() const;
+	[[nodiscard]] VmaAllocation allocation() const;
+	[[nodiscard]] void* mapped_data() const;
 
 private:
 	VmaAllocator vmaAllocator = VK_NULL_HANDLE;
 	VkImage _image = VK_NULL_HANDLE;
 	VmaAllocation vmaAllocation = VK_NULL_HANDLE;
-	void* mapped = nullptr;
+	void* mapped{};
 };
 
 struct PushConstants {
-	uint32_t objIdx;
-	uint32_t textureidx;
+	uint32_t objIdx{};
+	uint32_t textureidx{};
 };
 

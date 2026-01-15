@@ -10,7 +10,7 @@ module velo;
 import vulkan_hpp;
 
 void Velo::create_graphics_pipeline() {
-	auto shaderCode = read_file(SHADER_PATH.c_str());
+	auto shaderCode = read_file(SHADER_PATH);
 	vk::raii::ShaderModule shaderModule = create_shader_module(shaderCode);
 
 	vk::PipelineShaderStageCreateInfo vertShaderInfo{
@@ -23,7 +23,7 @@ void Velo::create_graphics_pipeline() {
 		.module = *shaderModule,
 		.pName = "fragMain"
 	};
-	vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
+	std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages = {vertShaderInfo, fragShaderInfo};
 	auto bindingDescription = Vertex::get_bindings_description();
 	auto attributeDescription = Vertex::get_attribute_description();
 	vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {
@@ -111,7 +111,7 @@ void Velo::create_graphics_pipeline() {
 	vk::GraphicsPipelineCreateInfo pipelineInfo {
 		.pNext = &renderingInfo,
 		.stageCount = 2,
-		.pStages = shaderStages,
+		.pStages = shaderStages.data(),
 		.pVertexInputState = &vertexInputInfo,
 		.pInputAssemblyState = &inputAsm,
 		.pViewportState = &viewportState,
@@ -190,9 +190,9 @@ void Velo::create_descriptor_set_layout() {
 
 void Velo::create_descriptor_pools() {
 	std::array<vk::DescriptorPoolSize, 3> poolSizes = {{
-		{vk::DescriptorType::eUniformBuffer, MAX_OBJECTS},
-		{vk::DescriptorType::eCombinedImageSampler, MAX_TEXTURES},
-		{vk::DescriptorType::eStorageBuffer, 1}
+		{.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = MAX_OBJECTS},
+		{.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = MAX_TEXTURES},
+		{.type = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1}
 	}};
 	vk::DescriptorPoolCreateInfo poolInfo {
 		.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,

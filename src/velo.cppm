@@ -28,7 +28,7 @@ const std::vector<char const*> validationLayers = {
 	constexpr bool enableValidationLayers = true;
 #endif
 
-std::vector<const char*> requiredDeviceExtensions = {
+const std::vector<const char*> requiredDeviceExtensions = {
     vk::KHRSwapchainExtensionName,
     vk::KHRSpirv14ExtensionName,
     vk::KHRSynchronization2ExtensionName,
@@ -55,42 +55,41 @@ const std::string SHADER_PATH = "/home/omathot/dev/cpp/velo/shaders/shader.spv";
 export class Velo {
 public:
 	Velo();
-	~Velo();
 	void run();
 
 private:
 	VeloContext vcontext;
-	GLFWwindow* window;
+	GLFWwindow* window{};
 	vk::raii::Context context;
-	vk::raii::Instance instance = nullptr;
-	vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
-	vk::raii::SurfaceKHR surface = nullptr;
+	vk::raii::Instance instance{nullptr};
+	vk::raii::DebugUtilsMessengerEXT debugMessenger{nullptr};
+	vk::raii::SurfaceKHR surface{nullptr};
 
-	vk::raii::PhysicalDevice physicalDevice = nullptr;
-	vk::raii::Device device = nullptr;
-	vk::raii::Queue graphicsQueue = nullptr;
-	vk::raii::Queue presentQueue = nullptr;
-	uint32_t graphicsIdx;
-	uint32_t presentIdx;
+	vk::raii::PhysicalDevice physicalDevice{nullptr};
+	vk::raii::Device device{nullptr};
+	vk::raii::Queue graphicsQueue{nullptr};
+	vk::raii::Queue presentQueue{nullptr};
+	uint32_t graphicsIdx{};
+	uint32_t presentIdx{};
 
-	VmaAllocator allocator;
+	VmaAllocator allocator{};
 
-	vk::raii::SwapchainKHR swapchain = nullptr;
+	vk::raii::SwapchainKHR swapchain{nullptr};
 	std::vector<vk::Image> swapchainImgs;
 	std::vector<vk::raii::ImageView> swapchainImgViews;
 	vk::Format swapchainImgFmt = vk::Format::eUndefined;
-	vk::Extent2D swapchainExtent;
+	vk::Extent2D swapchainExtent{};
 
-	vk::raii::CommandPool cmdPool = nullptr;
+	vk::raii::CommandPool cmdPool{nullptr};
 	std::vector<vk::raii::CommandBuffer> cmdBuffers;
 
-	vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
-	vk::raii::DescriptorPool descriptorPool = nullptr;
-	vk::raii::DescriptorSet descriptorSets = nullptr;
-	vk::raii::PipelineLayout pipelineLayout = nullptr;
-	vk::raii::Pipeline graphicsPipeline = nullptr;
+	vk::raii::DescriptorSetLayout descriptorSetLayout{nullptr};
+	vk::raii::DescriptorPool descriptorPool{nullptr};
+	vk::raii::DescriptorSet descriptorSets{nullptr};
+	vk::raii::PipelineLayout pipelineLayout{nullptr};
+	vk::raii::Pipeline graphicsPipeline{nullptr};
 
-	vk::raii::Semaphore timelineSem = nullptr;
+	vk::raii::Semaphore timelineSem{nullptr};
 	std::vector<vk::raii::Semaphore> presentCompleteSems;
 	std::vector<vk::raii::Semaphore> renderDoneSems;
 
@@ -103,31 +102,31 @@ private:
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
 	VmaImage textureImage;
-	uint32_t mipLvls;
-	vk::raii::ImageView textureImageView = nullptr;
-	vk::raii::Sampler textureSampler = nullptr;
+	uint32_t mipLvls{};
+	vk::raii::ImageView textureImageView{nullptr};
+	vk::raii::Sampler textureSampler{nullptr};
 	VmaImage depthImage;
-	vk::raii::ImageView depthImageView = nullptr;
+	vk::raii::ImageView depthImageView{nullptr};
 
 	std::vector<VmaImage> materialImages;
 	std::vector<vk::raii::ImageView> materialImageViews;
 	std::vector<uint32_t> materialIndices;
 
 
-	float totalTime = 0;
-	float dt = 0.0f;
-	float speed = 2.0f;
+	float totalTime{};
+	float dt{};
 	/// Total frame count for app lifespan
-	uint32_t frameCount = 0;
+	uint32_t frameCount{};
 	/// Frame Index for VK operations ( % MAX_FRAMES_IN_FLIGHT )
-	uint32_t frameIdx = 0;
+	uint32_t frameIdx{};
 	/// window resized bool
-	bool frameBuffResized = false;
+	bool frameBuffResized{};
 
-	glm::vec3 position = {};
+	glm::vec3 position{{}};
+	float speed = 2.0f;
 	int rotation = 1;
 	float rotationSpeed = 60.0f;
-	float currAngle = 0.0f;
+	float currAngle{};
 
 	void init_window();
 	void init_vulkan();
@@ -144,8 +143,6 @@ private:
 	void create_surface();
 	void init_vma();
 	void create_swapchain();
-	vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
-	vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR> availableModes);
 	vk::Extent2D choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities);
 	void create_image_views();
 	void create_graphics_pipeline();
@@ -189,7 +186,6 @@ private:
 	/// vector must be ordered from most desirable to least desirable
 	vk::Format find_supported_format(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 	vk::Format find_depth_format();
-	bool has_stencil_component(vk::Format fmt);
 	void load_model();
 	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
 	void process_input();
@@ -211,10 +207,10 @@ private:
 		vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
 		vk::DebugUtilsMessageTypeFlagsEXT type,
 		const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void*
+		void* /*data*/
 	) {
 		if (severity >= vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo) {
-			std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << std::endl;
+			std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage << '\n';
 		}
 		return vk::False;
 	}
@@ -222,7 +218,7 @@ private:
 	static void frameBufferResizeCb(GLFWwindow* window, int /*width*/, int /*height*/) {
 		// yes we can do that, yes it works
 		// just looks criminal
-		auto app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
+		auto* app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
 		app->frameBuffResized = true;
 	}
 };
@@ -241,5 +237,7 @@ std::vector<char> read_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
-
+bool has_stencil_component(vk::Format fmt);
 void handle_error(const char* msg, vk::Result error);
+vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes);

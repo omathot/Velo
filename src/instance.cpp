@@ -65,7 +65,7 @@ std::vector<char const*> Velo::get_required_extensions() {
 	vcontext.extensionProperties = extensionProperties;
 	// GLFW extensions
 	uint32_t glfwExtensionsCount = 0;
-	auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
+	auto* glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 	std::span glfwExtensionsSpan(glfwExtensions, glfwExtensionsCount);
 	vcontext.requiredGlfwExtensions = glfwExtensions;
 	vcontext.glfwCount = glfwExtensionsCount;
@@ -80,9 +80,9 @@ std::vector<char const*> Velo::get_required_extensions() {
 								});
 	if (!extensionsSupported) {
 		throw std::runtime_error("Required glfw extension not supported!\n");
-	} else {
-		std::cout << "All required GLFW extensions available\n";
 	}
+	std::cout << "All required GLFW extensions available\n";
+
 	requiredExtensions.append_range(glfwExtensionsSpan);
 	if (enableValidationLayers) {
 		requiredExtensions.push_back(vk::EXTDebugUtilsExtensionName);

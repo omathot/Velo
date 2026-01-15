@@ -69,26 +69,6 @@ void Velo::create_swapchain() {
 	std::cout << "Successfully created swapchain and acquired swapchain images\n";
 }
 
-vk::SurfaceFormatKHR Velo::choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
-	// srgb cause most common and best
-	for (const auto& format: availableFormats) {
-		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-			return format;
-		}
-	}
-	// no further rank on how "good" they are for now, if not ideal return first index
-	return availableFormats[0];
-}
-vk::PresentModeKHR Velo::choose_swap_present_mode(const std::vector<vk::PresentModeKHR> availableModes) {
-	// mailbox if available
-	for (const auto& mode: availableModes) {
-		if (mode == vk::PresentModeKHR::eMailbox) {
-			return mode;
-		}
-	}
-	// only one guaranteed to exist, also best for mobile devices where energy usage is relevant
-	return vk::PresentModeKHR::eFifo;
-}
 vk::Extent2D Velo::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) {
 	// check for magic number
 	if (capabilities.currentExtent.width != UINT32_MAX) {
@@ -111,3 +91,26 @@ void Velo::create_image_views() {
 	std::cout << "Successfully created image views, imgViews vec size: " << swapchainImgViews.size() << '\n';
 }
 
+
+// utils
+vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
+	// srgb cause most common and best
+	for (const auto& format: availableFormats) {
+		if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			return format;
+		}
+	}
+	// no further rank on how "good" they are for now, if not ideal return first index
+	return availableFormats[0];
+}
+
+vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes) {
+	// mailbox if available
+	for (const auto& mode: availableModes) {
+		if (mode == vk::PresentModeKHR::eMailbox) {
+			return mode;
+		}
+	}
+	// only one guaranteed to exist, also best for mobile devices where energy usage is relevant
+	return vk::PresentModeKHR::eFifo;
+}

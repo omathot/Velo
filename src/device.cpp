@@ -90,9 +90,9 @@ void Velo::create_logical_device() {
 }
 
 void Velo::create_surface() {
-	VkSurfaceKHR _surface;
+	VkSurfaceKHR _surface = nullptr;
 	if (glfwCreateWindowSurface(*instance, &*window, nullptr, &_surface) != 0) {
-		const char* msg;
+		const char* msg = nullptr;
 		glfwGetError(&msg);
 		throw std::runtime_error(std::format("Failed to create window surface: {}", msg));
 	}

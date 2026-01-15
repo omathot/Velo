@@ -31,7 +31,7 @@ void Velo::pick_physical_device() {
 		if (!extsExpected.has_value()) {
 			handle_error("Failed to query device for extensions", extsExpected.result);
 		}
-		auto deviceExts = *extsExpected;
+		const auto& deviceExts = *extsExpected;
 
 		// check suitability
 		bool recentEnough = deviceProperties.apiVersion >= vk::ApiVersion13;
@@ -56,18 +56,17 @@ void Velo::pick_physical_device() {
 			score += 1000;
 		}
 		score += deviceProperties.limits.maxImageDimension2D;
-		candidates.insert(std::make_pair(score, std::move(const_cast<vk::raii::PhysicalDevice&>(dev))));
+		candidates.insert(std::make_pair(score, dev));
 	}
 
 	if (candidates.rbegin()->first > 0) {
 		physicalDevice = std::move(candidates.rbegin()->second);
 		vcontext.deviceProperties = physicalDevice.getProperties();
 		vcontext.deviceFeatures = physicalDevice.getFeatures();
-		// vcontext.is_info_gathered();
 		if (vcontext.fetch_infos) {
 			vcontext.gather_features_info();
 		}
-		std::cout << "Picked physical device " << vcontext.deviceProperties.deviceName << std::endl;
+		std::cout << "Picked physical device " << vcontext.deviceProperties.deviceName << '\n';
 	} else {
 		throw std::runtime_error("Failed to find suitable GPU");
 	}

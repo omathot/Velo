@@ -25,8 +25,7 @@ VmaBuffer::~VmaBuffer() {
 		vmaDestroyBuffer(vmaAllocator, _buffer, vmaAllocation);
 	}
 }
-VmaBuffer::VmaBuffer(VmaBuffer&& other) noexcept : vmaAllocator(other.vmaAllocator), _buffer(other._buffer), vmaAllocation(other.vmaAllocation)  {
-	mapped = other.mapped;
+VmaBuffer::VmaBuffer(VmaBuffer&& other) noexcept : vmaAllocator(other.vmaAllocator), _buffer(other._buffer), vmaAllocation(other.vmaAllocation), mapped(other.mapped) {
 	other._buffer = VK_NULL_HANDLE;
 	other.vmaAllocation = VK_NULL_HANDLE;
 	other.mapped = nullptr;
@@ -53,7 +52,7 @@ VkBuffer VmaBuffer::get() const {
 }
 
 vk::Buffer VmaBuffer::buffer() const {
-	return vk::Buffer(_buffer);
+	return {_buffer};
 }
 
 VmaBuffer::operator VkBuffer() const {

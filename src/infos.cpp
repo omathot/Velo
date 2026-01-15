@@ -19,7 +19,7 @@ bool VeloContext::is_info_gathered() {
 // one day we'll have reflection
 void VeloContext::gather_features_info() {
 	std::println("gathering info");
-	const char* allNames[] = {
+	std::array<const char*, 55> allNames = {
 		"robustBufferAccess", "fullDrawIndexUint32", "imageCubeArray",
 		"independentBlend", "geometryShader", "tessellationShader",
 		"sampleRateShading", "dualSrcBlend", "logicOp",
@@ -43,9 +43,11 @@ void VeloContext::gather_features_info() {
 
 	std::ofstream featureFile("infos/available_device_features.txt");
 	if (featureFile.is_open()) {
+		// we are treating vk::PhysicalDeviceFatures as an array of vk::Bool32
+		// the struct is guaranteed to be a contiguous sequence of Bool32s with no padding
 		vk::Bool32* pFeatures = reinterpret_cast<vk::Bool32*>(&deviceFeatures);
-		for (int i = 0; i < 55; i++) {
-		    featureFile << allNames[i] << ": " << (pFeatures[i] ? "YES" : "NO") << "\n";
+		for (size_t i = 0; i < 55; i++) {
+		    featureFile << allNames.at(i) << ": " << (pFeatures[i] ? "YES" : "NO") << "\n";
 		}
 		featureFile.close();
 	}
@@ -77,7 +79,7 @@ void VeloContext::gather_layers_info() {
 	if (layersFile.is_open()) {
 		layersFile << "Available layers:\n";
 		for (const auto& property: layerProperties) {
-			layersFile << property.layerName << ":\n\t" << property.description << ". impl ver=" << property.implementationVersion << std::endl;
+			layersFile << property.layerName << ":\n\t" << property.description << ". impl ver=" << property.implementationVersion << '\n';
 		}
 		layersFile.close();
 	}

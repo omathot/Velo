@@ -5,7 +5,7 @@ module;
 #include <chrono>
 //
 #include <cstdint>
-#include <string.h>
+#include <cstring>
 #include <utility>
 
 module velo;
@@ -15,7 +15,7 @@ void Velo::create_index_buffer() {
 	vk::DeviceSize buffSize = sizeof(indices[0]) * indices.size();
 	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
-	void *dataStaging;
+	void *dataStaging = nullptr;
 	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
 	memcpy(dataStaging, indices.data(), buffSize);
 	vmaUnmapMemory(allocator, stagingBuff.allocation());
@@ -28,7 +28,7 @@ void Velo::create_vertex_buffer() {
 	vk::DeviceSize buffSize = sizeof(vertices[0]) * vertices.size();
 	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
-	void *dataStaging;
+	void *dataStaging = nullptr;;
 	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
 	memcpy(dataStaging, vertices.data(), buffSize);
 	vmaUnmapMemory(allocator, stagingBuff.allocation());
@@ -71,7 +71,7 @@ void Velo::create_material_index_buffer() {
 	vk::DeviceSize buffSize = sizeof(uint32_t) * materialIndices.size();
 	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
-	void *dataStaging;
+	void *dataStaging = nullptr;
 	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
 	memcpy(dataStaging, materialIndices.data(), buffSize);
 	vmaUnmapMemory(allocator, stagingBuff.allocation());
@@ -96,9 +96,9 @@ void Velo::create_material_index_buffer() {
 }
 
 void Velo::update_uniform_buffers(uint32_t currImg) {
-	static auto startTime = std::chrono::high_resolution_clock().now();
+	static auto startTime = std::chrono::high_resolution_clock::now();
 	static auto lastTime = startTime;
-	auto currentTime = std::chrono::high_resolution_clock().now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
 	totalTime = std::chrono::duration<float>(currentTime - startTime).count();
 	dt = std::chrono::duration<float>(currentTime - lastTime).count();
 	lastTime = currentTime;
@@ -186,7 +186,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 		.clearValue = clearDepth
 	};
 	vk::RenderingInfo renderingInfo = {
-		.renderArea = {.offset = {0, 0}, .extent = swapchainExtent},
+		.renderArea = {.offset = {0, 0}, .extent = swapchainExtent}, // NOLINT
 		.layerCount = 1,
 		.colorAttachmentCount = 1,
 		.pColorAttachments = &attachmentInfo,

@@ -44,7 +44,7 @@ void Velo::create_texture_image() {
 	mipLvls = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 	VmaBuffer stagingBuffer = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-	void* data;
+	void* data = nullptr;
 	vmaMapMemory(allocator, stagingBuffer.allocation(), &data);
 	memcpy(data, pixels, imgSize);
 	vmaUnmapMemory(allocator, stagingBuffer.allocation());
@@ -131,8 +131,8 @@ void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t w
 			.baseArrayLayer = 0,
 			.layerCount = 1
 		},
-		.imageOffset = {0, 0, 0},
-		.imageExtent = {width, height, 1}
+		.imageOffset = {0, 0, 0}, // NOLINT
+		.imageExtent = {width, height, 1} // NOLINT
 	};
 	vk::CopyBufferToImageInfo2 imgInfo {
 		.srcBuffer = buff.buffer(),

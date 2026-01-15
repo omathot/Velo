@@ -12,7 +12,6 @@ module;
 #include <vector>
 #include <stdexcept>
 #include <utility>
-#include <print>
 
 
 module velo;
@@ -33,10 +32,6 @@ Velo::Velo() {
 		std::println("\tEnabled Info Fetching");
 		vcontext.is_info_gathered();
 	#endif
-}
-
-Velo::~Velo() {
-	std::cout << "Destructing Velo\n";
 }
 
 void Velo::run() {
@@ -176,14 +171,14 @@ void Velo::draw_frame() {
 	record_command_buffer(imgIdx);
 
 	// using sync 2 feature
-	vk::SemaphoreSubmitInfo waitSemsInfo[] = {
+	std::array<vk::SemaphoreSubmitInfo, 1> waitSemsInfo = {{
 		{
 			.semaphore = *presentCompleteSems[frameIdx],
 			.value = 0,
 			.stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput // when to signal the Sem
 		}
-	};
-	vk::SemaphoreSubmitInfo signalSemsInfo[] = {
+	}};
+	std::array<vk::SemaphoreSubmitInfo, 2> signalSemsInfo = {{
 		{
 			.semaphore = *renderDoneSems[imgIdx],
 			.value = 0,
@@ -194,17 +189,17 @@ void Velo::draw_frame() {
 			.value = timelineValue,
 			.stageMask = vk::PipelineStageFlagBits2::eAllGraphics
 		}
-	};
+	}};
 	vk::CommandBufferSubmitInfo cmdInfo {
 		.commandBuffer = *cmdBuffers[frameIdx]
 	};
 	vk::SubmitInfo2 submitInfo = {
 		.waitSemaphoreInfoCount = 1,
-		.pWaitSemaphoreInfos = waitSemsInfo,
+		.pWaitSemaphoreInfos = waitSemsInfo.data(),
 		.commandBufferInfoCount = 1,
 		.pCommandBufferInfos = &cmdInfo,
 		.signalSemaphoreInfoCount = 2,
-		.pSignalSemaphoreInfos = signalSemsInfo
+		.pSignalSemaphoreInfos = signalSemsInfo.data()
 	};
 	graphicsQueue.submit2(submitInfo);
 
@@ -326,9 +321,6 @@ vk::Format Velo::find_depth_format() {
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment
 	);
 }
-bool Velo::has_stencil_component(vk::Format fmt) {
-	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
-}
 
 void Velo::load_model() {
 	tinyobj::attrib_t attrib;
@@ -360,7 +352,7 @@ void Velo::load_model() {
 			}
 			vertex.color = {1.0f, 1.0f, 1.0f};
 
-			if (uniqueVertices.count(vertex) == 0) {
+			if (uniqueVertices.contains(vertex)) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertex);
 			}
@@ -368,7 +360,7 @@ void Velo::load_model() {
 			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
-	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << std::endl;;
+	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << '\n';
 }
 
 void Velo::process_input() {
@@ -424,7 +416,8 @@ void Velo::process_input() {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		vcontext.should_quit = true;
 
-	double mouseX, mouseY;
+	double mouseX = 0;
+	double mouseY = 0;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
 }
 
@@ -486,7 +479,7 @@ void Velo::create_material_images() {
 		{0.4f, 0.4f, 0.4f},
 	};
 	for (uint32_t i = 0; i < colors.size(); i++) {
-		uint8_t pixels[4] = {
+		std::array<uint8_t, 4> pixels = {
 			static_cast<uint8_t>(colors[i].r * 255.0f),
 			static_cast<uint8_t>(colors[i].g * 255.0f),
 			static_cast<uint8_t>(colors[i].b * 255.0f),
@@ -497,12 +490,13 @@ void Velo::create_material_images() {
 		mipLvls = 1;
 		vk::DeviceSize imgSize = 4;
 		VmaBuffer stagingBuff = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
-		void* data;
+		void* data = nullptr;
 		vmaMapMemory(allocator, stagingBuff.allocation(), &data);
-		memcpy(data, pixels, imgSize);
+		memcpy(data, pixels.data(), imgSize);
 		vmaUnmapMemory(allocator, stagingBuff.allocation());
 
-		materialImages.push_back(VmaImage(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
+		materialImages.emplace_back(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+		// materialImages.push_back(VmaImage(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
 		std::println("Successfully created CODAM image");
 
 		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 1);
@@ -540,6 +534,7 @@ void Velo::create_texture_material_views() {
 	}
 
 	std::vector<vk::WriteDescriptorSet> writes;
+	writes.reserve(imageInfos.size());
 	for (uint32_t i = 0; i < imageInfos.size(); i++) {
 		writes.push_back({
 			.dstSet = *descriptorSets,
@@ -571,8 +566,8 @@ void Velo::load_model_per_face_material() {
 	for (const auto& shape: shapes) {
 		uint32_t idxOffset = 0;
 		for (uint32_t faceIdx = 0; faceIdx < shape.mesh.num_face_vertices.size(); faceIdx++) {
-			int matId = globalFaceIdx % 4;
-			if (matId < 0)
+			int matId = static_cast<int>(globalFaceIdx) % 4;
+			if (std::max(matId, 0) == 0)
 				matId = 0;
 
 			materialIndices.push_back(static_cast<uint32_t>(matId));
@@ -595,7 +590,7 @@ void Velo::load_model_per_face_material() {
 				}
 				vertex.color = {1.0f, 1.0f, 1.0f};
 
-				if (uniqueVertices.count(vertex) == 0) {
+				if (!uniqueVertices.contains(vertex)) {
 					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 					vertices.push_back(vertex);
 				}
@@ -606,5 +601,10 @@ void Velo::load_model_per_face_material() {
 			globalFaceIdx++;
 		}
 	}
-	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << std::endl;;
+	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << '\n';
+}
+
+// utils
+bool has_stencil_component(vk::Format fmt) {
+	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
 }

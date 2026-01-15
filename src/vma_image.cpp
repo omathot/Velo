@@ -7,7 +7,7 @@ VmaImage::VmaImage(VmaAllocator allocator, uint32_t width, uint32_t height, uint
 	vk::ImageCreateInfo buffInfo {
 		.imageType = vk::ImageType::e2D,
 		.format = fmt,
-		.extent = {width, height, 1},
+		.extent = {width, height, 1}, // NOLINT
 		.mipLevels = mipLvls,
 		.arrayLayers = 1,
 		.samples =vk::SampleCountFlagBits::e1,
@@ -32,8 +32,7 @@ VmaImage::~VmaImage() {
 	}
 
 }
-VmaImage::VmaImage(VmaImage&& other) noexcept : vmaAllocator(other.vmaAllocator), _image(other._image), vmaAllocation(other.vmaAllocation)  {
-	mapped = other.mapped;
+VmaImage::VmaImage(VmaImage&& other) noexcept : vmaAllocator(other.vmaAllocator), _image(other._image), vmaAllocation(other.vmaAllocation), mapped(other.mapped) {
 	other._image = VK_NULL_HANDLE;
 	other.vmaAllocation = VK_NULL_HANDLE;
 	other.mapped = nullptr;
@@ -60,7 +59,7 @@ VkImage VmaImage::get() const {
 	return _image;
 }
 vk::Image VmaImage::image() const {
-	return vk::Image(_image);
+	return {_image};
 }
 VmaAllocation VmaImage::allocation() const {
 	return vmaAllocation;
