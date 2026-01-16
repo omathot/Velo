@@ -12,7 +12,7 @@ module velo;
 import vulkan_hpp;
 
 
-vk::raii::ImageView Velo::create_image_view(const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mips) {
+vk::raii::ImageView create_image_view(vk::raii::Device& device, const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mips) {
 	vk::ImageViewCreateInfo viewInfo {
 		.image = img,
 		.viewType = vk::ImageViewType::e2D,
@@ -41,16 +41,17 @@ void Velo::create_texture_image() {
 		throw std::runtime_error("Failed to load pixels from texture");
 	}
 	vk::DeviceSize imgSize = static_cast<vk::DeviceSize>(texWidth * texHeight) * 4; // 4 bytes per pixel
-	mipLvls = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+	// mipLvls = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+	mipLvls = 1;
 
-	VmaBuffer stagingBuffer = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+	VmaBuffer stagingBuffer = VmaBuffer(gpu.allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 	void* data = nullptr;
-	vmaMapMemory(allocator, stagingBuffer.allocation(), &data);
+	vmaMapMemory(gpu.allocator, stagingBuffer.allocation(), &data);
 	memcpy(data, pixels, imgSize);
-	vmaUnmapMemory(allocator, stagingBuffer.allocation());
+	vmaUnmapMemory(gpu.allocator, stagingBuffer.allocation());
 
 	stbi_image_free(pixels);
-	textureImage = VmaImage(allocator, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
+	textureImage = VmaImage(gpu.allocator, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
 	std::cout << "Successfully created image\n";
 
 	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLvls);
@@ -59,7 +60,7 @@ void Velo::create_texture_image() {
 }
 
 void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mips) {
-	auto cmdBuff = begin_single_time_commands();
+	auto cmdBuff = gpu.begin_single_time_commands();
 
 	vk::ImageMemoryBarrier2 barrier = {
 		.oldLayout = oldLayout,
@@ -96,11 +97,11 @@ void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLay
 	};
 	cmdBuff.pipelineBarrier2(depInfo);
 
-	end_single_time_commands(cmdBuff);
+	gpu.end_single_time_commands(cmdBuff);
 }
 
 void Velo::create_texture_image_view() {
-	textureImageView = create_image_view(textureImage.image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, mipLvls);
+	textureImageView = create_image_view(gpu.device, textureImage.image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, mipLvls);
 	vk::DescriptorImageInfo imageInfo {
 		.sampler = *textureSampler,
 		.imageView = textureImageView,
@@ -116,11 +117,11 @@ void Velo::create_texture_image_view() {
 		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
 		.pImageInfo = &imageInfo
 	};
-	device.updateDescriptorSets(writes, nullptr);
+	gpu.device.updateDescriptorSets(writes, nullptr);
 }
 
 void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height) {
-	auto cmdBuff = begin_single_time_commands();
+	auto cmdBuff = gpu.begin_single_time_commands();
 	vk::BufferImageCopy2 region {
 		.bufferOffset = 0,
 		.bufferRowLength = 0,
@@ -143,5 +144,5 @@ void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t w
 	};
 	cmdBuff.copyBufferToImage2(imgInfo);
 
-	end_single_time_commands(cmdBuff);
+	gpu.end_single_time_commands(cmdBuff);
 }

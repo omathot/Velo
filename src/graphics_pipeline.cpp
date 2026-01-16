@@ -95,16 +95,16 @@ void Velo::create_graphics_pipeline() {
 		.pushConstantRangeCount = 1,
 		.pPushConstantRanges = &pcRange
 	};
-	auto layoutExpected = device.createPipelineLayout(layoutInfo);
+	auto layoutExpected = gpu.device.createPipelineLayout(layoutInfo);
 	if (!layoutExpected.has_value()) {
 		handle_error("Failed to create pipeline layout", layoutExpected.result);
 	}
 	pipelineLayout = std::move(*layoutExpected);
 
-	auto depthFmt = find_depth_format();
+	auto depthFmt = SwapchainContext::find_depth_format(gpu.physicalDevice);
 	vk::PipelineRenderingCreateInfo renderingInfo {
 		.colorAttachmentCount = 1,
-		.pColorAttachmentFormats = &swapchainImgFmt,
+		.pColorAttachmentFormats = &swapchain.format,
 		.depthAttachmentFormat = depthFmt
 	};
 
@@ -124,7 +124,7 @@ void Velo::create_graphics_pipeline() {
 		.renderPass = nullptr,
 	};
 
-	auto pipelineExpected = device.createGraphicsPipeline(nullptr, pipelineInfo);
+	auto pipelineExpected = gpu.device.createGraphicsPipeline(nullptr, pipelineInfo);
 	if (!pipelineExpected.has_value()) {
 		handle_error("Failed to create graphics pipeline", pipelineExpected.result);
 	}
@@ -137,7 +137,7 @@ vk::raii::ShaderModule Velo::create_shader_module(const std::vector<char>& code)
 		.codeSize = code.size() * sizeof(char),
 		.pCode = reinterpret_cast<const uint32_t*>(code.data()),
 	};
-	auto moduleExpected = device.createShaderModule(shaderInfo);
+	auto moduleExpected = gpu.device.createShaderModule(shaderInfo);
 	if (!moduleExpected.has_value()) {
 		handle_error("Failed to create shader module", moduleExpected.result);
 	}
@@ -181,7 +181,7 @@ void Velo::create_descriptor_set_layout() {
 		.pBindings = bindings.data()
 	};
 
-	auto layoutExpected = device.createDescriptorSetLayout(layoutInfo);
+	auto layoutExpected = gpu.device.createDescriptorSetLayout(layoutInfo);
 	if (!layoutExpected.has_value()) {
 		handle_error("Failed to create descriptor set layout", layoutExpected.result);
 	}
@@ -200,7 +200,7 @@ void Velo::create_descriptor_pools() {
 		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data()
 	};
-	auto poolExpected = device.createDescriptorPool(poolInfo);
+	auto poolExpected = gpu.device.createDescriptorPool(poolInfo);
 	if (!poolExpected.has_value()) {
 		handle_error("Failed to create descriptor pool", poolExpected.result);
 	}
@@ -214,7 +214,7 @@ void Velo::create_descriptor_sets() {
 		.descriptorSetCount = 1,
 		.pSetLayouts = &*descriptorSetLayout
 	};
-	auto setExpected = device.allocateDescriptorSets(allocInfo);
+	auto setExpected = gpu.device.allocateDescriptorSets(allocInfo);
 	if (!setExpected.has_value()) {
 		handle_error("Failed to allocate descriptor set", setExpected.result);
 	}

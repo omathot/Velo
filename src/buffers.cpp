@@ -13,27 +13,27 @@ import vulkan_hpp;
 
 void Velo::create_index_buffer() {
 	vk::DeviceSize buffSize = sizeof(indices[0]) * indices.size();
-	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+	VmaBuffer stagingBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
 	void *dataStaging = nullptr;
-	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
+	vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &dataStaging);
 	memcpy(dataStaging, indices.data(), buffSize);
-	vmaUnmapMemory(allocator, stagingBuff.allocation());
+	vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
-	indexBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	indexBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 	copy_buffer(stagingBuff, indexBuff, buffSize);
 }
 
 void Velo::create_vertex_buffer() {
 	vk::DeviceSize buffSize = sizeof(vertices[0]) * vertices.size();
-	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+	VmaBuffer stagingBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
 	void *dataStaging = nullptr;;
-	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
+	vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &dataStaging);
 	memcpy(dataStaging, vertices.data(), buffSize);
-	vmaUnmapMemory(allocator, stagingBuff.allocation());
+	vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
-	vertexBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	vertexBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 	copy_buffer(stagingBuff, vertexBuff, buffSize);
 }
 
@@ -43,7 +43,7 @@ void Velo::create_uniform_buffers() {
 
 	vk::DeviceSize buffSize = sizeof(UniformBufferObject);
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VmaBuffer buff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eUniformBuffer, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+		VmaBuffer buff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eUniformBuffer, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
 		auto vkBuff = buff.buffer();
 		void* mapped = buff.mapped_data();
 
@@ -63,20 +63,20 @@ void Velo::create_uniform_buffers() {
 			.descriptorType = vk::DescriptorType::eUniformBuffer,
 			.pBufferInfo = &buffInfo
 		};
-		device.updateDescriptorSets(writeSet, nullptr);
+		gpu.device.updateDescriptorSets(writeSet, nullptr);
 	}
 }
 
 void Velo::create_material_index_buffer() {
 	vk::DeviceSize buffSize = sizeof(uint32_t) * materialIndices.size();
-	VmaBuffer stagingBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+	VmaBuffer stagingBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
 	void *dataStaging = nullptr;
-	vmaMapMemory(allocator, stagingBuff.allocation(), &dataStaging);
+	vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &dataStaging);
 	memcpy(dataStaging, materialIndices.data(), buffSize);
-	vmaUnmapMemory(allocator, stagingBuff.allocation());
+	vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
-	materialIdxBuff = VmaBuffer(allocator, buffSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+	materialIdxBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 	copy_buffer(stagingBuff, materialIdxBuff, buffSize);
 
 	vk::DescriptorBufferInfo matBuffInfo {
@@ -92,7 +92,7 @@ void Velo::create_material_index_buffer() {
 		.descriptorType = vk::DescriptorType::eStorageBuffer,
 		.pBufferInfo = &matBuffInfo
 	};
-	device.updateDescriptorSets(writeSet, nullptr);
+	gpu.device.updateDescriptorSets(writeSet, nullptr);
 }
 
 void Velo::update_uniform_buffers(uint32_t currImg) {
@@ -106,34 +106,20 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 	UniformBufferObject ubo{};
 	ubo.model = glm::translate(glm::mat4(1.0f), position);
 	currAngle += dt * glm::radians(rotationSpeed) * static_cast<float>(rotation);
-	if (vcontext.enabled_codam) { // y up
-		ubo.model = glm::rotate(
-			ubo.model, // input matrix
-			currAngle,
-			glm::vec3(0.0f, 1.0f, 0.0f) // axis to rotate around
-		);
-		ubo.view = lookAt(
-			glm::vec3(0.0f, 3.0f, 7.0f), // camera pos
-			glm::vec3(0.0f, 1.0f, 0.0f), // target
-			glm::vec3(0.0f, 1.0f, 0.0f)  // X/Y/Z is up
-		);
-	} else { // keep z up for tutorial models
-		// ubo.model = 1;
-		ubo.model = glm::rotate(
-			ubo.model,
-			currAngle,
-			glm::vec3(0.0f, 0.0f, 1.0f)
-		);
-		ubo.view = lookAt(
-			glm::vec3(2.0f, 2.0f, 2.0f),
-			glm::vec3(0.0f, 0.0f, 0.0f),
-			glm::vec3(0.0f, 0.0f, 1.0f)
-		);
-	}
+	ubo.model = glm::rotate(
+		ubo.model, // input matrix
+		currAngle,
+		glm::vec3(0.0f, 1.0f, 0.0f) // axis to rotate around
+	);
+	ubo.view = lookAt(
+		glm::vec3(0.0f, 3.0f, 7.0f), // camera pos
+		glm::vec3(0.0f, 1.0f, 0.0f), // target
+		glm::vec3(0.0f, 1.0f, 0.0f)  // X/Y/Z is up
+	);
 	// TODO: figure this one out
 	ubo.proj = glm::perspective(
 		glm::radians(45.0f),
-		static_cast<float>(swapchainExtent.width) / static_cast<float>(swapchainExtent.height),
+		static_cast<float>(swapchain.extent.width) / static_cast<float>(swapchain.extent.height),
 		0.1f, 10.0f
 	);
 	ubo.proj[1][1] *= -1;
@@ -141,16 +127,16 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 	memcpy(uniformBuffsMapped[currImg], &ubo, sizeof(ubo));
 }
 void Velo::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size) {
-	auto cmdBuff = begin_single_time_commands();
+	auto cmdBuff = gpu.begin_single_time_commands();
 	cmdBuff.copyBuffer(srcBuff.buffer(), dstBuff.buffer(), vk::BufferCopy(0, 0, size));
-	end_single_time_commands(cmdBuff);
+	gpu.end_single_time_commands(cmdBuff);
 }
 
 void Velo::record_command_buffer(uint32_t imgIdx) {
 	auto& cmdBuffer = cmdBuffers[frameIdx];
 	cmdBuffer.begin({});
 	transition_image_layout(
-		swapchainImgs[imgIdx],
+		swapchain.images[imgIdx],
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::eColorAttachmentOptimal,
 		{},
@@ -160,7 +146,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 		vk::ImageAspectFlagBits::eColor
 	);
 	transition_image_layout(
-		depthImage.image(),
+		swapchain.depthImage.image(),
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::eDepthAttachmentOptimal,
 		vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
@@ -171,7 +157,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	);
 	vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 	vk::RenderingAttachmentInfo attachmentInfo = {
-		.imageView = *swapchainImgViews[imgIdx],
+		.imageView = *swapchain.imageViews[imgIdx],
 		.imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
 		.loadOp = vk::AttachmentLoadOp::eClear,
 		.storeOp = vk::AttachmentStoreOp::eStore,
@@ -179,14 +165,14 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	};
 	vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 	vk::RenderingAttachmentInfo depthAttachmentInfo {
-		.imageView = depthImageView,
+		.imageView = swapchain.depthView,
 		.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
 		.loadOp = vk::AttachmentLoadOp::eClear,
 		.storeOp = vk::AttachmentStoreOp::eDontCare,
 		.clearValue = clearDepth
 	};
 	vk::RenderingInfo renderingInfo = {
-		.renderArea = {.offset = {0, 0}, .extent = swapchainExtent}, // NOLINT
+		.renderArea = {.offset = {0, 0}, .extent = swapchain.extent}, // NOLINT
 		.layerCount = 1,
 		.colorAttachmentCount = 1,
 		.pColorAttachments = &attachmentInfo,
@@ -197,8 +183,8 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline);
 	cmdBuffer.bindVertexBuffers(0, vertexBuff.buffer(), {0});
 	cmdBuffer.bindIndexBuffer(indexBuff.buffer(), 0, vk::IndexType::eUint32);
-	cmdBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainExtent.width), static_cast<float>(swapchainExtent.height), 0.0f, 1.0f));
-	cmdBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapchainExtent));
+	cmdBuffer.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchain.extent.width), static_cast<float>(swapchain.extent.height), 0.0f, 1.0f));
+	cmdBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapchain.extent));
 	cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets, nullptr);
 	PushConstants pc {.objIdx = frameIdx, .textureidx = 0};
 	cmdBuffer.pushConstants<PushConstants>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pc);
@@ -206,7 +192,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.endRendering();
 
 	transition_image_layout(
-		swapchainImgs[imgIdx],
+		swapchain.images[imgIdx],
 		vk::ImageLayout::eColorAttachmentOptimal,
 		vk::ImageLayout::ePresentSrcKHR,
 		vk::AccessFlagBits2::eColorAttachmentWrite,

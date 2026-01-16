@@ -57,11 +57,11 @@ void Velo::main_loop() {
 		process_input();
 		draw_frame();
 	}
-	device.waitIdle();
+	gpu.device.waitIdle();
 }
 
 void Velo::cleanup() {
-	cleanup_swapchain();
+	swapchain.cleanup();
 
 	// VMA allocator being destroyed before vertexBuff
 	// explicitly call destructor
@@ -71,15 +71,15 @@ void Velo::cleanup() {
 	vertexBuff = VmaBuffer{};
 	materialIdxBuff = VmaBuffer{};
 	textureImage = VmaImage{};
-	depthImage = VmaImage{};
+	swapchain.depthImage = VmaImage{};
 	materialImages.clear();
-	vmaDestroyAllocator(allocator);
+	vmaDestroyAllocator(gpu.allocator);
 	/*
 		we delete window manually here before raii destructors run
 		surface won't have valid wayland surface -> segfault
 		this might be wayland only?
 	*/
-	surface.clear();
+	gpu.surface.clear();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
@@ -133,7 +133,7 @@ void Velo::draw_frame() {
 		.pSemaphores = &*timelineSem,
 		.pValues = &waitValue
 	};
-	auto waitExpected = device.waitSemaphores(waitInfo, UINT64_MAX);
+	auto waitExpected = gpu.device.waitSemaphores(waitInfo, UINT64_MAX);
 	if (waitExpected != vk::Result::eSuccess) {
 		handle_error("Failed to wait on timeline semaphore", waitExpected);
 	}
@@ -141,27 +141,27 @@ void Velo::draw_frame() {
 	// check resize before acquiring (diff from tutorial because timeline sem instead of fences they can just reset)
 	if (frameBuffResized) {
 		frameBuffResized = false;
-		recreate_swapchain();
+		swapchain.recreate(window, gpu);
 		// dummy signal (yay documentation)
 		vk::SemaphoreSignalInfo signalInfo {
 			.semaphore = *timelineSem,
 			.value = timelineValue
 		};
-		device.signalSemaphore(signalInfo);
+		gpu.device.signalSemaphore(signalInfo);
 		return;
 	}
 
 	update_uniform_buffers(frameIdx);
-	auto nextImgExpected = swapchain.acquireNextImage(UINT64_MAX, *presentCompleteSems[frameIdx], nullptr);
+	auto nextImgExpected = swapchain.swapchain.acquireNextImage(UINT64_MAX, *presentCompleteSems[frameIdx], nullptr);
 	bool recreate = nextImgExpected.result == vk::Result::eSuboptimalKHR;
 	if (nextImgExpected.result == vk::Result::eErrorOutOfDateKHR) {
 		frameBuffResized = false;
-		recreate_swapchain();
+		swapchain.recreate(window, gpu);
 		vk::SemaphoreSignalInfo signalInfo {
 			.semaphore = *timelineSem,
 			.value = timelineValue
 		};
-		device.signalSemaphore(signalInfo);
+		gpu.device.signalSemaphore(signalInfo);
 		return;
 	}
 	if (!nextImgExpected.has_value() && !recreate) {
@@ -201,25 +201,25 @@ void Velo::draw_frame() {
 		.signalSemaphoreInfoCount = 2,
 		.pSignalSemaphoreInfos = signalSemsInfo.data()
 	};
-	graphicsQueue.submit2(submitInfo);
+	gpu.graphicsQueue.submit2(submitInfo);
 
 	const vk::PresentInfoKHR presentInfo = {
 		.waitSemaphoreCount = 1,
 		.pWaitSemaphores = &*renderDoneSems[imgIdx],
 		.swapchainCount = 1,
-		.pSwapchains = &*swapchain,
+		.pSwapchains = &*swapchain.swapchain,
 		.pImageIndices = &imgIdx
 	};
-	auto presentExpected = presentQueue.presentKHR(presentInfo);
+	auto presentExpected = gpu.presentQueue.presentKHR(presentInfo);
 	if (presentExpected == vk::Result::eErrorOutOfDateKHR || presentExpected == vk::Result::eSuboptimalKHR || recreate) {
-		recreate_swapchain();
+		swapchain.recreate(window, gpu);
 	} else if (presentExpected != vk::Result::eSuccess) {
 		handle_error("Failed to present frame", presentExpected);
 	}
 }
 
-uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties) {
-	vk::PhysicalDeviceMemoryProperties memProperties = physicalDevice.getMemoryProperties();
+uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
+	vk::PhysicalDeviceMemoryProperties memProperties = gpu.physicalDevice.getMemoryProperties();
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
 			return i;
@@ -229,48 +229,8 @@ uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags pro
 	std::unreachable();
 }
 
-/*
-	"All the helper functions that submit commands so far have been set up to execute synchronously by
-	waiting for the queue to become idle. For practical applications it is recommended to combine these operations
-	in a single command buffer and execute them asynchronously for higher throughput, especially the transitions
-	and copy in the createTextureImage function. Try to experiment with this by creating a setupCommandBuffer that the
-	helper functions record commands into, and add a flushSetupCommands to execute the commands that have been recorded so far.
-	It’s best to do this after the texture mapping works to check if the texture resources are still set up correctly."
-		 - tutorial (https://docs.vulkan.org/tutorial/latest/06_Texture_mapping/00_Images.html)
-	TODO: Make command submit asynchronous
-*/
-vk::raii::CommandBuffer Velo::begin_single_time_commands() {
-	vk::CommandBufferAllocateInfo allocInfo {
-		.commandPool = cmdPool,
-		.level = vk::CommandBufferLevel::ePrimary,
-		.commandBufferCount = 1
-	};
-	auto cmdBuffExpected = device.allocateCommandBuffers(allocInfo);
-	if (!cmdBuffExpected.has_value()) {
-		handle_error("Failed to allocate command buffer", cmdBuffExpected.result);
-	}
-	auto cmdBuff = std::move(cmdBuffExpected->front());
-	vk::CommandBufferBeginInfo beginInfo {
-		.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit
-	};
-	cmdBuff.begin(beginInfo);
-
-	return cmdBuff;
-}
-
-void Velo::end_single_time_commands(vk::raii::CommandBuffer& cmdBuff)  {
-	cmdBuff.end();
-
-	vk::SubmitInfo submitInfo {
-		.commandBufferCount = 1,
-		.pCommandBuffers = &*cmdBuff
-	};
-	graphicsQueue.submit(submitInfo);
-	graphicsQueue.waitIdle();
-}
-
 void Velo::create_texture_sampler() {
-	vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
+	vk::PhysicalDeviceProperties properties = gpu.physicalDevice.getProperties();
 	vk::SamplerCreateInfo samplerInfo {
 		.magFilter = vk::Filter::eLinear,
 		.minFilter = vk::Filter::eLinear,
@@ -287,20 +247,14 @@ void Velo::create_texture_sampler() {
 		.borderColor = vk::BorderColor::eIntOpaqueBlack,
 		.unnormalizedCoordinates = vk::False
 	};
-	auto samplerExpected = device.createSampler(samplerInfo);
+	auto samplerExpected = gpu.device.createSampler(samplerInfo);
 	if (!samplerExpected.has_value()) {
 		handle_error("Failed to create texture sampler", samplerExpected.result);
 	}
 	textureSampler = std::move(*samplerExpected);
 }
 
-void Velo::create_depth_resources() {
-	vk::Format depthFmt = find_depth_format();
-	depthImage = VmaImage(allocator, swapchainExtent.width, swapchainExtent.height, 1, vk::ImageUsageFlagBits::eDepthStencilAttachment, depthFmt,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
-	depthImageView = create_image_view(depthImage.image(), depthFmt, vk::ImageAspectFlagBits::eDepth, 1);
-}
-
-vk::Format Velo::find_supported_format(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+vk::Format find_supported_format(vk::raii::PhysicalDevice& physicalDevice, const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
 	for (const auto format : candidates) {
 		vk::FormatProperties props = physicalDevice.getFormatProperties(format);
 		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
@@ -311,15 +265,6 @@ vk::Format Velo::find_supported_format(const std::vector<vk::Format>& candidates
 		}
 	}
 	throw std::runtime_error("Failed to find supported format");
-}
-
-
-vk::Format Velo::find_depth_format() {
-	return find_supported_format(
-		{vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
-		vk::ImageTiling::eOptimal,
-		vk::FormatFeatureFlagBits::eDepthStencilAttachment
-	);
 }
 
 void Velo::load_model() {
@@ -352,7 +297,7 @@ void Velo::load_model() {
 			}
 			vertex.color = {1.0f, 1.0f, 1.0f};
 
-			if (uniqueVertices.contains(vertex)) {
+			if (!uniqueVertices.contains(vertex)) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertex);
 			}
@@ -422,20 +367,20 @@ void Velo::process_input() {
 }
 
 void Velo::init_env() {
-	create_instance();
+	gpu.create_instance(context, vcontext);
 	setup_debug_messenger();
-	create_surface();
-	pick_physical_device();
-	create_logical_device();
-	init_vma();
+	gpu.create_surface(window);
+	gpu.pick_physical_device(vcontext);
+	gpu.create_logical_device(gpu.surface);
+	gpu.init_vma();
 }
 
 void Velo::init_swapchain() {
-	create_swapchain();
-	create_image_views();
+	swapchain.create(window, gpu);
+	swapchain.create_image_views(gpu.device);
 }
 void Velo::init_commands() {
-	create_command_pool();
+	gpu.create_command_pool();
 	create_command_buffer();
 }
 void Velo::init_descriptors() {
@@ -455,23 +400,19 @@ void Velo::init_default_data() {
 		create_texture_image_view();
 		load_model();
 	}
-	create_depth_resources();
+	swapchain.create_depth_resources(gpu);
 	create_vertex_buffer();
 	create_index_buffer();
 	create_uniform_buffers();
 	if (vcontext.enabled_codam) {
 		create_material_index_buffer();
+	} else {
+		// yes this is ugly. just temporary for codam
+		create_dummy_material_index_buffer();
 	}
 }
 
 void Velo::create_material_images() {
-	// tinyobj::attrib_t attrib;
-	// std::map<std::string, int> material_map;
-	// std::string baseDir = "textures/";
-	// std::vector<tinyobj::material_t> materials;
-	// std::string warning, err;
-	// std::ifstream mtlstream(TEXTURE_PATH.c_str());
-
 	std::vector<glm::vec3> colors = {
 		{1.0f, 1.0f, 1.0},
 		{0.8f, 0.8f, 0.8f},
@@ -489,13 +430,13 @@ void Velo::create_material_images() {
 		int texH = 1;
 		mipLvls = 1;
 		vk::DeviceSize imgSize = 4;
-		VmaBuffer stagingBuff = VmaBuffer(allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+		VmaBuffer stagingBuff = VmaBuffer(gpu.allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		void* data = nullptr;
-		vmaMapMemory(allocator, stagingBuff.allocation(), &data);
+		vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &data);
 		memcpy(data, pixels.data(), imgSize);
-		vmaUnmapMemory(allocator, stagingBuff.allocation());
+		vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
-		materialImages.emplace_back(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+		materialImages.emplace_back(gpu.allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
 		// materialImages.push_back(VmaImage(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
 		std::println("Successfully created CODAM image");
 
@@ -503,28 +444,13 @@ void Velo::create_material_images() {
 		copy_buffer_to_image(stagingBuff, materialImages[i], static_cast<uint32_t>(texW), static_cast<uint32_t>(texH));
 		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, 1);
 	}
-
-	// if (!mtlstream) {
-	// 	throw std::runtime_error("failed to open mtl file");
-	// }
-	// tinyobj::LoadMtl(&material_map, &materials, &mtlstream, &warning, &err);
-	// if (!warning.empty()) {
-	// 	std::cout << "mtl warning: " << warning << std::endl;
-	// }
-	// if (!err.empty()) {
-	// 	throw std::runtime_error("mtl error: " + err);
-	// }
-	// if (materials.empty()) {
-	// 	throw std::runtime_error("No materials found in MTL file");
-	// }
-
 }
 
 void Velo::create_texture_material_views() {
 	std::vector<vk::raii::ImageView> matviews;
 	std::vector<vk::DescriptorImageInfo> imageInfos;
 	for (uint32_t i = 0; i < materialImages.size(); i++) {
-		auto matView = create_image_view(materialImages[i].image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, 1);
+		auto matView = create_image_view(gpu.device, materialImages[i].image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, 1);
 		materialImageViews.push_back(std::move(matView));
 		imageInfos.push_back({
 			.sampler = textureSampler,
@@ -545,7 +471,7 @@ void Velo::create_texture_material_views() {
 			.pImageInfo = &imageInfos[i]
 		});
 	}
-	device.updateDescriptorSets(writes, nullptr);
+	gpu.device.updateDescriptorSets(writes, nullptr);
 }
 
 void Velo::load_model_per_face_material() {
@@ -602,6 +528,29 @@ void Velo::load_model_per_face_material() {
 		}
 	}
 	std::cout << "Successfully loaded model, uniquevertices = " << vertices.size() << '\n';
+}
+
+void Velo::create_dummy_material_index_buffer() {
+    vk::DeviceSize buffSize = sizeof(uint32_t);
+    materialIdxBuff = VmaBuffer(gpu.allocator, buffSize,
+        vk::BufferUsageFlagBits::eStorageBuffer,
+        VMA_MEMORY_USAGE_AUTO,
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+
+    vk::DescriptorBufferInfo matBuffInfo {
+        .buffer = materialIdxBuff.buffer(),
+        .offset = 0,
+        .range = buffSize
+    };
+    vk::WriteDescriptorSet writeSet {
+        .dstSet = *descriptorSets,
+        .dstBinding = 2,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = vk::DescriptorType::eStorageBuffer,
+        .pBufferInfo = &matBuffInfo
+    };
+    gpu.device.updateDescriptorSets(writeSet, nullptr);
 }
 
 // util

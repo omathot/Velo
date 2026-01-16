@@ -1,5 +1,6 @@
 module;
 #include <GLFW/glfw3.h>
+#include <vk_mem_alloc.h>
 //
 #include <iostream>
 
@@ -9,17 +10,18 @@ import vulkan_hpp;
 
 static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::PresentModeKHR>& availableModes);
+static vk::Extent2D choose_swap_extent(GLFWwindow* window, const vk::SurfaceCapabilitiesKHR& capabilities);
 
-void Velo::create_swapchain() {
-	auto capabilitiesExpected = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+void SwapchainContext::create(GLFWwindow* window, GpuContext& gpu) {
+	auto capabilitiesExpected = gpu.physicalDevice.getSurfaceCapabilitiesKHR(gpu.surface);
 	if (!capabilitiesExpected.has_value()) {
 		handle_error("Failed to query for surface capabilities", capabilitiesExpected.result);
 	}
-	auto fmtsExpected = physicalDevice.getSurfaceFormatsKHR(surface);
+	auto fmtsExpected = gpu.physicalDevice.getSurfaceFormatsKHR(gpu.surface);
 	if (!fmtsExpected.has_value()) {
 		handle_error("Failed to query for available surface formats", fmtsExpected.result);
 	}
-	auto presentExpected = physicalDevice.getSurfacePresentModesKHR(surface);
+	auto presentExpected = gpu.physicalDevice.getSurfacePresentModesKHR(gpu.surface);
 	if (!presentExpected.has_value()) {
 		handle_error("Failed to query for available surface present modes", presentExpected.result);
 	}
@@ -27,18 +29,18 @@ void Velo::create_swapchain() {
 
 	auto fmt = choose_swap_surface_format(*fmtsExpected);
 	auto mode = choose_swap_present_mode(*presentExpected);
-	auto extent = choose_swap_extent(surfaceCapabilities);
+	auto tmpExtent = choose_swap_extent(window, surfaceCapabilities);
 	// target triple buffering for mailbox mode (instead of minImageCount + 1)
 	auto minImgCount = std::max(3u, surfaceCapabilities.minImageCount);
 	minImgCount = (surfaceCapabilities.maxImageCount > 0 && minImgCount > surfaceCapabilities.maxImageCount) ? surfaceCapabilities.maxImageCount : minImgCount;
 
 	vk::SwapchainCreateInfoKHR swapInfo {
 		.flags = vk::SwapchainCreateFlagsKHR(),
-		.surface = surface,
+		.surface = gpu.surface,
 		.minImageCount = minImgCount,
 		.imageFormat = fmt.format,
 		.imageColorSpace = fmt.colorSpace,
-		.imageExtent = extent,
+		.imageExtent = tmpExtent,
 		.imageArrayLayers = 1,
 		.imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
 		.imageSharingMode = vk::SharingMode::eExclusive,
@@ -47,8 +49,8 @@ void Velo::create_swapchain() {
 		.presentMode = mode,
 		.clipped = true,
 	};
-	std::array<uint32_t, 2> familyIndices = {graphicsIdx, presentIdx};
-	if (graphicsIdx != presentIdx) {
+	std::array<uint32_t, 2> familyIndices = {gpu.graphicsIdx, gpu.presentIdx};
+	if (gpu.graphicsIdx != gpu.presentIdx) {
 		swapInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 		swapInfo.queueFamilyIndexCount = 2;
 		swapInfo.pQueueFamilyIndices = familyIndices.data();
@@ -56,7 +58,7 @@ void Velo::create_swapchain() {
 		swapInfo.imageSharingMode = vk::SharingMode::eExclusive;
 	}
 
-	auto swapchainExpected = device.createSwapchainKHR(swapInfo);
+	auto swapchainExpected = gpu.device.createSwapchainKHR(swapInfo);
 	if (!swapchainExpected.has_value()) {
 		handle_error("Failed to create swapchain", swapchainExpected.result);
 	}
@@ -65,14 +67,14 @@ void Velo::create_swapchain() {
 	if (!imgsExpected.has_value()) {
 		handle_error("Failed to get swapchain images", imgsExpected.result);
 	}
-	swapchainImgs = *imgsExpected;
-	swapchainExtent = extent;
-	swapchainImgFmt = fmt.format;
+	images = *imgsExpected;
+	extent = tmpExtent;
+	format = fmt.format;
 
 	std::cout << "Successfully created swapchain and acquired swapchain images\n";
 }
 
-vk::Extent2D Velo::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabilities) {
+static vk::Extent2D choose_swap_extent(GLFWwindow* window, const vk::SurfaceCapabilitiesKHR& capabilities) {
 	// check for magic number
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
@@ -85,13 +87,13 @@ vk::Extent2D Velo::choose_swap_extent(const vk::SurfaceCapabilitiesKHR& capabili
 	};
 }
 
-void Velo::create_image_views() {
-	swapchainImgViews.clear();
-	for (auto swapchainImg : swapchainImgs) {
-		auto imgView = create_image_view(swapchainImg, swapchainImgFmt, vk::ImageAspectFlagBits::eColor, 1);
-		swapchainImgViews.emplace_back(std::move(imgView));
+void SwapchainContext::create_image_views(vk::raii::Device& device) {
+	imageViews.clear();
+	for (auto swapchainImg : images) {
+		auto imgView = create_image_view(device, swapchainImg, format, vk::ImageAspectFlagBits::eColor, 1);
+		imageViews.emplace_back(std::move(imgView));
 	}
-	std::cout << "Successfully created image views, imgViews vec size: " << swapchainImgViews.size() << '\n';
+	std::cout << "Successfully created image views, imgViews vec size: " << imageViews.size() << '\n';
 }
 
 
@@ -116,4 +118,39 @@ static vk::PresentModeKHR choose_swap_present_mode(const std::vector<vk::Present
 	}
 	// only one guaranteed to exist, also best for mobile devices where energy usage is relevant
 	return vk::PresentModeKHR::eFifo;
+}
+
+void SwapchainContext::create_depth_resources(GpuContext& gpu) {
+	vk::Format depthFmt = find_depth_format(gpu.physicalDevice);
+	depthImage = VmaImage(gpu.allocator, extent.width, extent.height, 1, vk::ImageUsageFlagBits::eDepthStencilAttachment, depthFmt,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
+	depthView = create_image_view(gpu.device, depthImage.image(), depthFmt, vk::ImageAspectFlagBits::eDepth, 1);
+}
+
+vk::Format SwapchainContext::find_depth_format(vk::raii::PhysicalDevice& physicalDevice) {
+	return find_supported_format(
+		physicalDevice,
+		{vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+		vk::ImageTiling::eOptimal,
+		vk::FormatFeatureFlagBits::eDepthStencilAttachment
+	);
+}
+
+void SwapchainContext::recreate(GLFWwindow* window, GpuContext& gpu) {
+	int width = 0, height = 0;
+	glfwGetFramebufferSize(window, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	gpu.device.waitIdle();
+	cleanup();
+	create(window, gpu);
+	create_image_views(gpu.device);
+	create_depth_resources(gpu);
+}
+
+void SwapchainContext::cleanup() {
+	imageViews.clear();
+	swapchain = nullptr;
 }
