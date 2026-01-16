@@ -1,9 +1,8 @@
 module;
 #include <print>
-#include <fstream>
-#include <filesystem>
 
 module velo;
+import std;
 bool VeloContext::is_info_gathered() {
 	const std::filesystem::path infoDir = "infos/";
 	if (std::filesystem::exists(infoDir)) {

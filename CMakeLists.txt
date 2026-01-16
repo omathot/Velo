@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 4.0)
-# set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
-# set(CMAKE_CXX_MODULE_STD ON)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+set(CMAKE_CXX_MODULE_STD ON)
 project(velo VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 find_package(Vulkan REQUIRED)
@@ -15,6 +14,7 @@ FetchContent_Declare(
        VulkanMemoryAllocator
        GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
        GIT_TAG v3.3.0
+       SYSTEM
 )
 FetchContent_MakeAvailable(VulkanMemoryAllocator)
 
@@ -142,7 +142,7 @@ target_link_options(${PROJECT_NAME} PRIVATE
        --coverage ${SANITIZER_FLAGS}
 )
 
-# set_target_properties(${PROJECT_NAME} PROPERTIES CXX_MODULE_STD 1)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_MODULE_STD 1)
 target_link_libraries(${PROJECT_NAME} PRIVATE
        Vulkan::cppm
        glm::glm
@@ -152,7 +152,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
        tinyobjloader
 )
 
-
+# clang-tidy
 option(TIDY "Enable clang-tidy pass" OFF)
 if (TIDY)
        find_program(CLANG_TIDY_EXE NAMES clang-tidy)

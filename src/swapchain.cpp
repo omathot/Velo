@@ -1,11 +1,9 @@
 module;
 #include <GLFW/glfw3.h>
 #include <vk_mem_alloc.h>
-//
-#include <iostream>
 
 module velo;
-// import std;
+import std;
 import vulkan_hpp;
 
 static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
@@ -49,7 +47,7 @@ void SwapchainContext::create(GLFWwindow* window, GpuContext& gpu) {
 		.presentMode = mode,
 		.clipped = true,
 	};
-	std::array<uint32_t, 2> familyIndices = {gpu.graphicsIdx, gpu.presentIdx};
+	std::array<std::uint32_t, 2> familyIndices = {gpu.graphicsIdx, gpu.presentIdx};
 	if (gpu.graphicsIdx != gpu.presentIdx) {
 		swapInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 		swapInfo.queueFamilyIndexCount = 2;
@@ -82,8 +80,8 @@ static vk::Extent2D choose_swap_extent(GLFWwindow* window, const vk::SurfaceCapa
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(window, &width, &height);
 	return {
-		.width = std::clamp<uint32_t>(static_cast<uint32_t>(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-		.height = std::clamp<uint32_t>(static_cast<uint32_t>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
+		.width = std::clamp<std::uint32_t>(static_cast<std::uint32_t>(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+		.height = std::clamp<std::uint32_t>(static_cast<std::uint32_t>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
 	};
 }
 

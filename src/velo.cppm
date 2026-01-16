@@ -1,6 +1,4 @@
 module;
-#include <cstdint>
-#include <functional>
 #include <GLFW/glfw3.h>
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -11,15 +9,9 @@ module;
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
-//
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <stdexcept>
 
 export module velo;
-// import std;
+import std;
 import vulkan_hpp;
 
 #define VULKAN_HPP_DISABLE_IMPLICIT_RESULT_VALUE_CAST
@@ -46,9 +38,9 @@ constexpr int MAX_OBJECTS = 100;
 constexpr int MAX_TEXTURES = 100;
 constexpr int MAX_MATERIALS = 4;
 
-constexpr uint32_t WIDTH = 800;
-constexpr uint32_t HEIGHT = 600;
-#ifdef CODAM
+constexpr std::uint32_t WIDTH = 800;
+constexpr std::uint32_t HEIGHT = 600;
+#if defined(CODAM)
 	const std::string MODEL_PATH = "/home/omathot/dev/cpp/velo/models/teapot2.obj";
 	const std::string TEXTURE_PATH = "/home/omathot/dev/cpp/velo/textures/teapot2.mtl";
 #else
@@ -68,7 +60,7 @@ struct VeloContext {
 	std::vector<vk::LayerProperties> layerProperties;
 	std::vector<vk::ExtensionProperties> extensionProperties;
 	const char** requiredGlfwExtensions{};
-	uint32_t glfwCount{};
+	std::uint32_t glfwCount{};
 
 	void enable_codam();
 	void enable_x11();
@@ -112,8 +104,6 @@ struct std::hash<Vertex> {
 	}
 };
 
-
-// replaces vk::raii::Buffer
 class VmaBuffer {
 public:
 	VmaBuffer() = default;
@@ -149,9 +139,9 @@ public:
 	VmaImage() = default;
 	VmaImage(
 		VmaAllocator allocator,
-		uint32_t width,
-		uint32_t height,
-		uint32_t mipLvls,
+		std::uint32_t width,
+		std::uint32_t height,
+		std::uint32_t mipLvls,
 		vk::ImageUsageFlags usage,
 		vk::Format fmt,
 		VmaAllocationCreateFlags flags = 0,
@@ -180,7 +170,7 @@ private:
 struct Mesh {
 	VmaBuffer vertexBuff;
 	VmaBuffer indexBuff;
-	uint32_t indexCount;
+	std::uint32_t indexCount{};
 };
 
 struct Material {
@@ -189,8 +179,8 @@ struct Material {
 };
 
 struct PushConstants {
-	uint32_t objIdx{};
-	uint32_t textureidx{};
+	std::uint32_t objIdx{};
+	std::uint32_t textureidx{};
 };
 
 struct GpuContext {
@@ -200,8 +190,8 @@ struct GpuContext {
 	vk::raii::Device device{nullptr};
 	vk::raii::Queue graphicsQueue{nullptr};
 	vk::raii::Queue presentQueue{nullptr};
-	uint32_t graphicsIdx{};
-	uint32_t presentIdx{};
+	std::uint32_t graphicsIdx{};
+	std::uint32_t presentIdx{};
 	VmaAllocator allocator{};
 	vk::raii::CommandPool cmdPool{nullptr};
 
@@ -213,7 +203,7 @@ struct GpuContext {
 	void create_instance(vk::raii::Context& context, VeloContext& vcontext);
 	void create_surface(GLFWwindow* window);
 	void pick_physical_device(VeloContext& vcontext);
-	std::tuple<uint32_t, uint32_t> find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps, vk::raii::SurfaceKHR& surface) const;
+	std::tuple<std::uint32_t, std::uint32_t> find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps, vk::raii::SurfaceKHR& surface) const;
 	void create_logical_device(vk::raii::SurfaceKHR& surface);
 	void init_vma();
 	void create_command_pool();
@@ -262,7 +252,7 @@ private:
 	std::vector<vk::raii::Semaphore> renderDoneSems;
 
 	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<std::uint32_t> indices;
 	VmaBuffer vertexBuff;
 	VmaBuffer indexBuff;
 	VmaBuffer materialIdxBuff;
@@ -270,20 +260,20 @@ private:
 	std::vector<VmaBuffer> uniformBuffs;
 	std::vector<void*> uniformBuffsMapped;
 	VmaImage textureImage;
-	uint32_t mipLvls{};
+	std::uint32_t mipLvls{};
 	vk::raii::ImageView textureImageView{nullptr};
 	vk::raii::Sampler textureSampler{nullptr};
 
 	std::vector<VmaImage> materialImages;
 	std::vector<vk::raii::ImageView> materialImageViews;
-	std::vector<uint32_t> materialIndices;
+	std::vector<std::uint32_t> materialIndices;
 
 	float totalTime{};
 	float dt{};
 	/// Total frame count for app lifespan
-	uint32_t frameCount{};
+	std::uint32_t frameCount{};
 	/// Frame Index for VK operations ( % MAX_FRAMES_IN_FLIGHT )
-	uint32_t frameIdx{};
+	std::uint32_t frameIdx{};
 	/// window resized bool
 	bool frameBuffResized{};
 
@@ -308,7 +298,7 @@ private:
 	void create_graphics_pipeline();
 	[[nodiscard]] vk::raii::ShaderModule create_shader_module(const std::vector<char>& code) const;
 	void create_command_buffer();
-	void record_command_buffer(uint32_t imgIdx);
+	void record_command_buffer(std::uint32_t imgIdx);
 	// img transitions
 	void transition_image_layout(
 		vk::Image img,
@@ -320,20 +310,20 @@ private:
 		vk::PipelineStageFlags2 dstStageMask,
 		vk::ImageAspectFlags aspectFlags
 	);
-	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mips);
+	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, std::uint32_t mips);
 	void create_sync_objects();
 	void create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, VmaBuffer& buff, vk::raii::DeviceMemory& buffMem);
 	void create_vertex_buffer();
 	void create_index_buffer();
-	[[nodiscard]] uint32_t find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
+	[[nodiscard]] std::uint32_t find_memory_type(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 	void copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size);
 	void create_descriptor_set_layout();
 	void create_uniform_buffers();
-	void update_uniform_buffers(uint32_t currImg);
+	void update_uniform_buffers(std::uint32_t currImg);
 	void create_descriptor_pools();
 	void create_descriptor_sets();
 	void create_texture_image();
-	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height);
+	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, std::uint32_t width, std::uint32_t height);
 	void create_texture_image_view();
 	void create_texture_sampler();
 	void load_model();
@@ -388,4 +378,4 @@ std::vector<char> read_file(const std::string& filename) {
 void handle_error(const char* msg, vk::Result error);
 /// vector must be ordered from most desirable to least desirable
 vk::Format find_supported_format(vk::raii::PhysicalDevice& physicalDevice, const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
-vk::raii::ImageView create_image_view(vk::raii::Device& device, const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mips);
+vk::raii::ImageView create_image_view(vk::raii::Device& device, const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, std::uint32_t mips);

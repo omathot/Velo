@@ -2,13 +2,9 @@ module;
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <chrono>
-//
-#include <cstdint>
-#include <cstring>
-#include <utility>
 
 module velo;
+import std;
 import vulkan_hpp;
 
 void Velo::create_index_buffer() {
@@ -17,7 +13,7 @@ void Velo::create_index_buffer() {
 
 	void *dataStaging = nullptr;
 	vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &dataStaging);
-	memcpy(dataStaging, indices.data(), buffSize);
+	std::memcpy(dataStaging, indices.data(), buffSize);
 	vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
 	indexBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
@@ -30,7 +26,7 @@ void Velo::create_vertex_buffer() {
 
 	void *dataStaging = nullptr;;
 	vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &dataStaging);
-	memcpy(dataStaging, vertices.data(), buffSize);
+	std::memcpy(dataStaging, vertices.data(), buffSize);
 	vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
 	vertexBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
@@ -58,7 +54,7 @@ void Velo::create_uniform_buffers() {
 		vk::WriteDescriptorSet writeSet {
 			.dstSet = *descriptorSets,
 			.dstBinding = 0,
-			.dstArrayElement = static_cast<uint32_t>(i),
+			.dstArrayElement = static_cast<std::uint32_t>(i),
 			.descriptorCount = 1,
 			.descriptorType = vk::DescriptorType::eUniformBuffer,
 			.pBufferInfo = &buffInfo
@@ -68,12 +64,12 @@ void Velo::create_uniform_buffers() {
 }
 
 void Velo::create_material_index_buffer() {
-	vk::DeviceSize buffSize = sizeof(uint32_t) * materialIndices.size();
+	vk::DeviceSize buffSize = sizeof(std::uint32_t) * materialIndices.size();
 	VmaBuffer stagingBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 
 	void *dataStaging = nullptr;
 	vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &dataStaging);
-	memcpy(dataStaging, materialIndices.data(), buffSize);
+	std::memcpy(dataStaging, materialIndices.data(), buffSize);
 	vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
 	materialIdxBuff = VmaBuffer(gpu.allocator, buffSize, vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
@@ -95,7 +91,7 @@ void Velo::create_material_index_buffer() {
 	gpu.device.updateDescriptorSets(writeSet, nullptr);
 }
 
-void Velo::update_uniform_buffers(uint32_t currImg) {
+void Velo::update_uniform_buffers(std::uint32_t currImg) {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	static auto lastTime = startTime;
 	auto currentTime = std::chrono::high_resolution_clock::now();
@@ -124,7 +120,7 @@ void Velo::update_uniform_buffers(uint32_t currImg) {
 	);
 	ubo.proj[1][1] *= -1;
 
-	memcpy(uniformBuffsMapped[currImg], &ubo, sizeof(ubo));
+	std::memcpy(uniformBuffsMapped[currImg], &ubo, sizeof(ubo));
 }
 void Velo::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size) {
 	auto cmdBuff = gpu.begin_single_time_commands();
@@ -132,7 +128,7 @@ void Velo::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize si
 	gpu.end_single_time_commands(cmdBuff);
 }
 
-void Velo::record_command_buffer(uint32_t imgIdx) {
+void Velo::record_command_buffer(std::uint32_t imgIdx) {
 	auto& cmdBuffer = cmdBuffers[frameIdx];
 	cmdBuffer.begin({});
 	transition_image_layout(
@@ -188,7 +184,7 @@ void Velo::record_command_buffer(uint32_t imgIdx) {
 	cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *descriptorSets, nullptr);
 	PushConstants pc {.objIdx = frameIdx, .textureidx = 0};
 	cmdBuffer.pushConstants<PushConstants>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pc);
-	cmdBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	cmdBuffer.drawIndexed(static_cast<std::uint32_t>(indices.size()), 1, 0, 0, 0);
 	cmdBuffer.endRendering();
 
 	transition_image_layout(

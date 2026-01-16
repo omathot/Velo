@@ -3,19 +3,10 @@ module;
 #include <glm/fwd.hpp>
 #include <vk_mem_alloc.h>
 #include <tiny_obj_loader.h>
-//
-#include <print>
-#include <cstring>
 #include <unordered_map>
-#include <iostream>
-#include <cstdint>
-#include <vector>
-#include <stdexcept>
-#include <utility>
-
 
 module velo;
-// import std;
+import std;
 import vulkan_hpp;
 
 Velo::Velo() {
@@ -218,9 +209,9 @@ void Velo::draw_frame() {
 	}
 }
 
-uint32_t Velo::find_memory_type(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
+std::uint32_t Velo::find_memory_type(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
 	vk::PhysicalDeviceMemoryProperties memProperties = gpu.physicalDevice.getMemoryProperties();
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+	for (std::uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
 			return i;
 		}
@@ -278,7 +269,7 @@ void Velo::load_model() {
 		throw std::runtime_error(warn + err);
 	}
 
-	std::unordered_map<Vertex, uint32_t> uniqueVertices;
+	std::unordered_map<Vertex, std::uint32_t> uniqueVertices;
 	for (const auto& shape: shapes) {
 		for (const auto& idx: shape.mesh.indices) {
 			Vertex vertex{};
@@ -298,7 +289,7 @@ void Velo::load_model() {
 			vertex.color = {1.0f, 1.0f, 1.0f};
 
 			if (!uniqueVertices.contains(vertex)) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				uniqueVertices[vertex] = static_cast<std::uint32_t>(vertices.size());
 				vertices.push_back(vertex);
 			}
 			// if already seen index to it with vertex
@@ -419,7 +410,7 @@ void Velo::create_material_images() {
 		{0.6f, 0.6f, 0.6f},
 		{0.4f, 0.4f, 0.4f},
 	};
-	for (uint32_t i = 0; i < colors.size(); i++) {
+	for (std::uint32_t i = 0; i < colors.size(); i++) {
 		std::array<uint8_t, 4> pixels = {
 			static_cast<uint8_t>(colors[i].r * 255.0f),
 			static_cast<uint8_t>(colors[i].g * 255.0f),
@@ -433,15 +424,15 @@ void Velo::create_material_images() {
 		VmaBuffer stagingBuff = VmaBuffer(gpu.allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		void* data = nullptr;
 		vmaMapMemory(gpu.allocator, stagingBuff.allocation(), &data);
-		memcpy(data, pixels.data(), imgSize);
+		std::memcpy(data, pixels.data(), imgSize);
 		vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
-		materialImages.emplace_back(gpu.allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
-		// materialImages.push_back(VmaImage(allocator, static_cast<uint32_t>(texW), static_cast<uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
+		materialImages.emplace_back(gpu.allocator, static_cast<std::uint32_t>(texW), static_cast<std::uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
+		// materialImages.push_back(VmaImage(allocator, static_cast<std::uint32_t>(texW), static_cast<std::uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
 		std::println("Successfully created CODAM image");
 
 		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 1);
-		copy_buffer_to_image(stagingBuff, materialImages[i], static_cast<uint32_t>(texW), static_cast<uint32_t>(texH));
+		copy_buffer_to_image(stagingBuff, materialImages[i], static_cast<std::uint32_t>(texW), static_cast<std::uint32_t>(texH));
 		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, 1);
 	}
 }
@@ -449,7 +440,7 @@ void Velo::create_material_images() {
 void Velo::create_texture_material_views() {
 	std::vector<vk::raii::ImageView> matviews;
 	std::vector<vk::DescriptorImageInfo> imageInfos;
-	for (uint32_t i = 0; i < materialImages.size(); i++) {
+	for (std::uint32_t i = 0; i < materialImages.size(); i++) {
 		auto matView = create_image_view(gpu.device, materialImages[i].image(), vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, 1);
 		materialImageViews.push_back(std::move(matView));
 		imageInfos.push_back({
@@ -461,7 +452,7 @@ void Velo::create_texture_material_views() {
 
 	std::vector<vk::WriteDescriptorSet> writes;
 	writes.reserve(imageInfos.size());
-	for (uint32_t i = 0; i < imageInfos.size(); i++) {
+	for (std::uint32_t i = 0; i < imageInfos.size(); i++) {
 		writes.push_back({
 			.dstSet = *descriptorSets,
 			.dstBinding = 1,
@@ -485,18 +476,18 @@ void Velo::load_model_per_face_material() {
 		throw std::runtime_error(warn + err);
 	}
 
-	std::unordered_map<Vertex, uint32_t> uniqueVertices;
-	uint32_t globalFaceIdx = 0;
+	std::unordered_map<Vertex, std::uint32_t> uniqueVertices;
+	std::uint32_t globalFaceIdx = 0;
 	materialIndices.clear();
 
 	for (const auto& shape: shapes) {
-		uint32_t idxOffset = 0;
-		for (uint32_t faceIdx = 0; faceIdx < shape.mesh.num_face_vertices.size(); faceIdx++) {
+		std::uint32_t idxOffset = 0;
+		for (std::uint32_t faceIdx = 0; faceIdx < shape.mesh.num_face_vertices.size(); faceIdx++) {
 			int matId = static_cast<int>(globalFaceIdx) % 4;
 			if (std::max(matId, 0) == 0)
 				matId = 0;
 
-			materialIndices.push_back(static_cast<uint32_t>(matId));
+			materialIndices.push_back(static_cast<std::uint32_t>(matId));
 			size_t numVerts = shape.mesh.num_face_vertices[faceIdx];
 			for (size_t i = 0; i < numVerts; i++) {
 				const auto& idx = shape.mesh.indices[idxOffset + i];
@@ -517,7 +508,7 @@ void Velo::load_model_per_face_material() {
 				vertex.color = {1.0f, 1.0f, 1.0f};
 
 				if (!uniqueVertices.contains(vertex)) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+					uniqueVertices[vertex] = static_cast<std::uint32_t>(vertices.size());
 					vertices.push_back(vertex);
 				}
 				// if already seen index to it with vertex
@@ -531,7 +522,7 @@ void Velo::load_model_per_face_material() {
 }
 
 void Velo::create_dummy_material_index_buffer() {
-    vk::DeviceSize buffSize = sizeof(uint32_t);
+    vk::DeviceSize buffSize = sizeof(std::uint32_t);
     materialIdxBuff = VmaBuffer(gpu.allocator, buffSize,
         vk::BufferUsageFlagBits::eStorageBuffer,
         VMA_MEMORY_USAGE_AUTO,

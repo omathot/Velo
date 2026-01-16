@@ -1,12 +1,5 @@
-module;
-#include <cstdint>
-//
-#include <vector>
-#include <stdexcept>
-#include <iostream>
-
 module velo;
-// import std;
+import std;
 import vulkan_hpp;
 
 void Velo::create_graphics_pipeline() {
@@ -38,7 +31,7 @@ void Velo::create_graphics_pipeline() {
 		vk::DynamicState::eScissor
 	};
 	vk::PipelineDynamicStateCreateInfo dynStateInfo {
-		.dynamicStateCount = static_cast<uint32_t>(dynStates.size()),
+		.dynamicStateCount = static_cast<std::uint32_t>(dynStates.size()),
 		.pDynamicStates = dynStates.data(),
 	};
 	vk::PipelineViewportStateCreateInfo viewportState {
@@ -135,7 +128,7 @@ void Velo::create_graphics_pipeline() {
 vk::raii::ShaderModule Velo::create_shader_module(const std::vector<char>& code) const {
 	vk::ShaderModuleCreateInfo shaderInfo {
 		.codeSize = code.size() * sizeof(char),
-		.pCode = reinterpret_cast<const uint32_t*>(code.data()),
+		.pCode = reinterpret_cast<const std::uint32_t*>(code.data()),
 	};
 	auto moduleExpected = gpu.device.createShaderModule(shaderInfo);
 	if (!moduleExpected.has_value()) {
@@ -171,13 +164,13 @@ void Velo::create_descriptor_set_layout() {
 		vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind
 	};
 	vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo {
-		.bindingCount = static_cast<uint32_t>(bindingsFlags.size()),
+		.bindingCount = static_cast<std::uint32_t>(bindingsFlags.size()),
 		.pBindingFlags = bindingsFlags.data()
 	};
 	vk::DescriptorSetLayoutCreateInfo layoutInfo {
 		.pNext = bindingFlagsInfo,
 		.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
-		.bindingCount = static_cast<uint32_t>(bindings.size()),
+		.bindingCount = static_cast<std::uint32_t>(bindings.size()),
 		.pBindings = bindings.data()
 	};
 
@@ -197,7 +190,7 @@ void Velo::create_descriptor_pools() {
 	vk::DescriptorPoolCreateInfo poolInfo {
 		.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		.maxSets = 1,
-		.poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+		.poolSizeCount = static_cast<std::uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data()
 	};
 	auto poolExpected = gpu.device.createDescriptorPool(poolInfo);

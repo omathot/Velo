@@ -1,18 +1,13 @@
 module;
-#include <cstdint>
-#include <algorithm>
-#include <cmath>
-#include <stdexcept>
 #include <vk_mem_alloc.h>
-#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 module velo;
+import std;
 import vulkan_hpp;
 
-
-vk::raii::ImageView create_image_view(vk::raii::Device& device, const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, uint32_t mips) {
+vk::raii::ImageView create_image_view(vk::raii::Device& device, const vk::Image& img, vk::Format fmt, vk::ImageAspectFlags aspectFlags, std::uint32_t mips) {
 	vk::ImageViewCreateInfo viewInfo {
 		.image = img,
 		.viewType = vk::ImageViewType::e2D,
@@ -30,7 +25,6 @@ vk::raii::ImageView create_image_view(vk::raii::Device& device, const vk::Image&
 		handle_error("Failed to create image view", imgViewExpected.result);
 	}
 	return (std::move(*imgViewExpected));
-
 }
 
 void Velo::create_texture_image() {
@@ -41,25 +35,25 @@ void Velo::create_texture_image() {
 		throw std::runtime_error("Failed to load pixels from texture");
 	}
 	vk::DeviceSize imgSize = static_cast<vk::DeviceSize>(texWidth * texHeight) * 4; // 4 bytes per pixel
-	// mipLvls = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+	// mipLvls = static_cast<std::uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 	mipLvls = 1;
 
 	VmaBuffer stagingBuffer = VmaBuffer(gpu.allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 	void* data = nullptr;
 	vmaMapMemory(gpu.allocator, stagingBuffer.allocation(), &data);
-	memcpy(data, pixels, imgSize);
+	std::memcpy(data, pixels, imgSize);
 	vmaUnmapMemory(gpu.allocator, stagingBuffer.allocation());
 
 	stbi_image_free(pixels);
-	textureImage = VmaImage(gpu.allocator, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
+	textureImage = VmaImage(gpu.allocator, static_cast<std::uint32_t>(texWidth), static_cast<std::uint32_t>(texHeight), mipLvls, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb,  VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO);
 	std::cout << "Successfully created image\n";
 
 	transition_image_texture_layout(textureImage, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLvls);
-	copy_buffer_to_image(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	copy_buffer_to_image(stagingBuffer, textureImage, static_cast<std::uint32_t>(texWidth), static_cast<std::uint32_t>(texHeight));
 	transition_image_texture_layout(textureImage, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, mipLvls);
 }
 
-void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mips) {
+void Velo::transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, std::uint32_t mips) {
 	auto cmdBuff = gpu.begin_single_time_commands();
 
 	vk::ImageMemoryBarrier2 barrier = {
@@ -120,7 +114,7 @@ void Velo::create_texture_image_view() {
 	gpu.device.updateDescriptorSets(writes, nullptr);
 }
 
-void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, uint32_t width, uint32_t height) {
+void Velo::copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, std::uint32_t width, std::uint32_t height) {
 	auto cmdBuff = gpu.begin_single_time_commands();
 	vk::BufferImageCopy2 region {
 		.bufferOffset = 0,

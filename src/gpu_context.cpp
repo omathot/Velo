@@ -1,16 +1,11 @@
 module;
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <utility>
-#include <vector>
-#include <iostream>
-#include <algorithm>
-#include <cstring>
 #include <vulkan/vulkan_core.h>
-#include <map>
 #include <vk_mem_alloc.h>
 
 module velo;
+import std;
 static std::vector<char const*> get_required_extensions(vk::raii::Context& context, VeloContext& vcontext);
 static std::vector<char const*> get_required_layers(vk::raii::Context& context, VeloContext& vcontext);
 /*
@@ -115,9 +110,9 @@ void GpuContext::create_logical_device(vk::raii::SurfaceKHR& _surface) {
 	// TODO: update this when fixed on VK side
 	vk::DeviceCreateInfo deviceInfo{};
 	deviceInfo.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>();
-	deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.size());
+	deviceInfo.queueCreateInfoCount = static_cast<std::uint32_t>(queueInfos.size());
 	deviceInfo.pQueueCreateInfos = queueInfos.data();
-	deviceInfo.enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtensions.size());
+	deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(requiredDeviceExtensions.size());
 	deviceInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
 
 	auto deviceExpected = physicalDevice.createDevice(deviceInfo);
@@ -144,9 +139,9 @@ void GpuContext::create_instance(vk::raii::Context& context, VeloContext& vconte
 
 	vk::InstanceCreateInfo createInfo{
 		.pApplicationInfo = &appInfo,
-		.enabledLayerCount = static_cast<uint32_t>(requiredLayers.size()),
+		.enabledLayerCount = static_cast<std::uint32_t>(requiredLayers.size()),
 		.ppEnabledLayerNames = requiredLayers.data(),
-		.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
+		.enabledExtensionCount = static_cast<std::uint32_t>(requiredExtensions.size()),
 		.ppEnabledExtensionNames = requiredExtensions.data(),
 	};
 	auto instExpected = context.createInstance(createInfo);
@@ -167,7 +162,7 @@ void GpuContext::pick_physical_device(VeloContext& vcontext) {
 		throw std::runtime_error("Failed to find GPU with Vulkan Support");
 	}
 
-	std::multimap<int, vk::raii::PhysicalDevice> candidates{};
+	std::multimap<int, vk::raii::PhysicalDevice> candidates;
 	for (const auto& dev : devices) {
 		auto deviceProperties = dev.getProperties();
 		auto deviceFeatures = dev.getFeatures();
@@ -196,7 +191,7 @@ void GpuContext::pick_physical_device(VeloContext& vcontext) {
 		}
 
 		// begin scoring
-		uint32_t score = 0;
+		std::uint32_t score = 0;
 		if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
 			score += 1000;
 		}
@@ -227,7 +222,7 @@ static std::vector<char const*> get_required_extensions(vk::raii::Context& conte
 	auto extensionProperties = *propsExpected;
 	vcontext.extensionProperties = extensionProperties;
 	// GLFW extensions
-	uint32_t glfwExtensionsCount = 0;
+	std::uint32_t glfwExtensionsCount = 0;
 	auto* glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 	std::span glfwExtensionsSpan(glfwExtensions, glfwExtensionsCount);
 	vcontext.requiredGlfwExtensions = glfwExtensions;
@@ -284,7 +279,7 @@ static std::vector<char const*> get_required_layers(vk::raii::Context& context, 
 	return requiredLayers;
 }
 
-std::tuple<uint32_t, uint32_t> GpuContext::find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps, vk::raii::SurfaceKHR& _surface) const {
+std::tuple<std::uint32_t, std::uint32_t> GpuContext::find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps, vk::raii::SurfaceKHR& _surface) const {
 	// graphics queue
 	auto graphicsQueueFamily = std::ranges::find_if(qfps, [](vk::QueueFamilyProperties const& qfp) {
 									return static_cast<bool>(qfp.queueFlags & vk::QueueFlagBits::eGraphics);
@@ -292,7 +287,7 @@ std::tuple<uint32_t, uint32_t> GpuContext::find_queue_families(const std::vector
 	if (graphicsQueueFamily == qfps.end()) {
 		throw std::runtime_error("No graphics queue family found");
 	}
-	uint32_t graphicsIndex = static_cast<uint32_t>(std::distance(qfps.begin(), graphicsQueueFamily));
+	std::uint32_t graphicsIndex = static_cast<std::uint32_t>(std::distance(qfps.begin(), graphicsQueueFamily));
 
 	// present queue
 	auto graphicsSupportPresExpected = physicalDevice.getSurfaceSupportKHR(graphicsIndex, _surface);
@@ -300,12 +295,12 @@ std::tuple<uint32_t, uint32_t> GpuContext::find_queue_families(const std::vector
 		handle_error("Failed to querty for surface support", graphicsSupportPresExpected.result);
 	}
 	vk::Bool32 supportsPresent = *graphicsSupportPresExpected;
-	uint32_t presentIndex = UINT32_MAX;
+	std::uint32_t presentIndex = UINT32_MAX;
 	if (supportsPresent) {
 		// graphics queue family also supports present
 		presentIndex = graphicsIndex;
 	} else {
-		for (uint32_t i = 0; i < qfps.size(); i++) {
+		for (std::uint32_t i = 0; i < qfps.size(); i++) {
 			if (i == graphicsIndex) continue;
 			auto presSupportExpected = physicalDevice.getSurfaceSupportKHR(i, _surface);
 			if (!presSupportExpected.has_value()) {

@@ -2,8 +2,9 @@ module;
 #include <vk_mem_alloc.h>
 
 module velo;
+import std;
 
-VmaImage::VmaImage(VmaAllocator allocator, uint32_t width, uint32_t height, uint32_t mipLvls, vk::ImageUsageFlags usage, vk::Format fmt, VmaAllocationCreateFlags flags, VmaMemoryUsage vmaMemUsage) : vmaAllocator(allocator) {
+VmaImage::VmaImage(VmaAllocator allocator, std::uint32_t width, std::uint32_t height, std::uint32_t mipLvls, vk::ImageUsageFlags usage, vk::Format fmt, VmaAllocationCreateFlags flags, VmaMemoryUsage vmaMemUsage) : vmaAllocator(allocator) {
 	vk::ImageCreateInfo buffInfo {
 		.imageType = vk::ImageType::e2D,
 		.format = fmt,
