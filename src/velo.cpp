@@ -12,16 +12,16 @@ import vulkan_hpp;
 Velo::Velo() {
 	std::println("Constructing Velo");
 	#if defined(CODAM)
+		config.enable_codam();
 		std::println("\tEnabled codam mode");
-		vcontext.enable_codam();
 	#endif
 	#if defined(X11)
+		config.enable_x11();
 		std::println("\tEnabled X11 mode");
-		vcontext.enable_x11();
 	#endif
 	#if defined(INFOS)
+		config.is_info_gathered();
 		std::println("\tEnabled Info Fetching");
-		vcontext.is_info_gathered();
 	#endif
 }
 
@@ -33,17 +33,34 @@ void Velo::run() {
 }
 
 void Velo::init_vulkan() {
-	init_env();
-	init_swapchain();
-	init_commands();
-	create_sync_objects();
-	init_descriptors();
+	gpu.create_instance(context, config);
+	setup_debug_messenger();
+	gpu.create_surface(window);
+	gpu.pick_physical_device(config);
+	gpu.create_logical_device(gpu.surface);
+	gpu.init_vma();
+	gpu.create_command_pool();
+
+	swapchain.create(window, gpu);
+	swapchain.create_image_views(gpu.device);
+	swapchain.create_depth_resources(gpu);
+
+	sync.create(gpu.device, static_cast<uint32_t>(swapchain.images.size()));
+
+	descriptors.create_layout(gpu.device);
+	descriptors.create_pool(gpu.device);
+	descriptors.create_set(gpu.device);
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		frames[i].create(gpu, *descriptors.set, i);
+	}
+
 	create_graphics_pipeline();
 	init_default_data();
 }
 
 void Velo::main_loop() {
-	while (!glfwWindowShouldClose(window) && !vcontext.should_quit) {
+	while (!glfwWindowShouldClose(window) && !config.should_quit) {
 		glfwPollEvents();
 		process_input();
 		draw_frame();
@@ -57,13 +74,15 @@ void Velo::cleanup() {
 	// VMA allocator being destroyed before vertexBuff
 	// explicitly call destructor
 	// TODO: find something cleaner
-	uniformBuffs.clear();
 	indexBuff = VmaBuffer{};
 	vertexBuff = VmaBuffer{};
 	materialIdxBuff = VmaBuffer{};
 	textureImage = VmaImage{};
 	swapchain.depthImage = VmaImage{};
 	materialImages.clear();
+	for (auto& frame: frames) {
+		frame.uniformBuffer = VmaBuffer{};
+	}
 	vmaDestroyAllocator(gpu.allocator);
 	/*
 		we delete window manually here before raii destructors run
@@ -109,47 +128,31 @@ void Velo::transition_image_layout(
 		.imageMemoryBarrierCount = 1,
 		.pImageMemoryBarriers = &barrier
 	};
-	cmdBuffers[frameIdx].pipelineBarrier2(depInfo);
+	frames[frameIdx].cmdBuffer.pipelineBarrier2(depInfo);
 }
 
 void Velo::draw_frame() {
 	uint64_t timelineValue = ++frameCount;
 	frameIdx = (timelineValue - 1) % MAX_FRAMES_IN_FLIGHT;
-	uint64_t waitValue = 0;
-	if (timelineValue > MAX_FRAMES_IN_FLIGHT) {
-		waitValue = timelineValue - MAX_FRAMES_IN_FLIGHT;
-	}
-	vk::SemaphoreWaitInfo waitInfo = {
-		.semaphoreCount = 1,
-		.pSemaphores = &*timelineSem,
-		.pValues = &waitValue
-	};
-	auto waitExpected = gpu.device.waitSemaphores(waitInfo, UINT64_MAX);
-	if (waitExpected != vk::Result::eSuccess) {
-		handle_error("Failed to wait on timeline semaphore", waitExpected);
-	}
+	FrameContext& frame = frames[frameIdx];
+	sync.wait_for_frame(gpu.device, timelineValue);
 
 	// check resize before acquiring (diff from tutorial because timeline sem instead of fences they can just reset)
 	if (frameBuffResized) {
 		frameBuffResized = false;
 		swapchain.recreate(window, gpu);
-		// dummy signal (yay documentation)
-		vk::SemaphoreSignalInfo signalInfo {
-			.semaphore = *timelineSem,
-			.value = timelineValue
-		};
-		gpu.device.signalSemaphore(signalInfo);
+		sync.signal_timeline(gpu.device, timelineValue);
 		return;
 	}
 
-	update_uniform_buffers(frameIdx);
-	auto nextImgExpected = swapchain.swapchain.acquireNextImage(UINT64_MAX, *presentCompleteSems[frameIdx], nullptr);
+	update_uniform_buffers();
+	auto nextImgExpected = swapchain.swapchain.acquireNextImage(UINT64_MAX, *frame.acquireSem, nullptr);
 	bool recreate = nextImgExpected.result == vk::Result::eSuboptimalKHR;
 	if (nextImgExpected.result == vk::Result::eErrorOutOfDateKHR) {
 		frameBuffResized = false;
 		swapchain.recreate(window, gpu);
 		vk::SemaphoreSignalInfo signalInfo {
-			.semaphore = *timelineSem,
+			.semaphore = *sync.timelineSem,
 			.value = timelineValue
 		};
 		gpu.device.signalSemaphore(signalInfo);
@@ -164,25 +167,25 @@ void Velo::draw_frame() {
 	// using sync 2 feature
 	std::array<vk::SemaphoreSubmitInfo, 1> waitSemsInfo = {{
 		{
-			.semaphore = *presentCompleteSems[frameIdx],
+			.semaphore = *frame.acquireSem,
 			.value = 0,
 			.stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput // when to signal the Sem
 		}
 	}};
 	std::array<vk::SemaphoreSubmitInfo, 2> signalSemsInfo = {{
 		{
-			.semaphore = *renderDoneSems[imgIdx],
+			.semaphore = *sync.presentSems[imgIdx],
 			.value = 0,
 			.stageMask = vk::PipelineStageFlagBits2::eAllGraphics
 		},
 		{
-			.semaphore = *timelineSem,
+			.semaphore = *sync.timelineSem,
 			.value = timelineValue,
 			.stageMask = vk::PipelineStageFlagBits2::eAllGraphics
 		}
 	}};
 	vk::CommandBufferSubmitInfo cmdInfo {
-		.commandBuffer = *cmdBuffers[frameIdx]
+		.commandBuffer = *frames[frameIdx].cmdBuffer
 	};
 	vk::SubmitInfo2 submitInfo = {
 		.waitSemaphoreInfoCount = 1,
@@ -196,7 +199,7 @@ void Velo::draw_frame() {
 
 	const vk::PresentInfoKHR presentInfo = {
 		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = &*renderDoneSems[imgIdx],
+		.pWaitSemaphores = &*sync.presentSems[imgIdx],
 		.swapchainCount = 1,
 		.pSwapchains = &*swapchain.swapchain,
 		.pImageIndices = &imgIdx
@@ -207,17 +210,6 @@ void Velo::draw_frame() {
 	} else if (presentExpected != vk::Result::eSuccess) {
 		handle_error("Failed to present frame", presentExpected);
 	}
-}
-
-std::uint32_t Velo::find_memory_type(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const {
-	vk::PhysicalDeviceMemoryProperties memProperties = gpu.physicalDevice.getMemoryProperties();
-	for (std::uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-	throw std::runtime_error("Failed to find a suitable memory type");
-	std::unreachable();
 }
 
 void Velo::create_texture_sampler() {
@@ -350,39 +342,16 @@ void Velo::process_input() {
 	plusPressed = plusPress;
 
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		vcontext.should_quit = true;
+		config.should_quit = true;
 
 	double mouseX = 0;
 	double mouseY = 0;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
 }
 
-void Velo::init_env() {
-	gpu.create_instance(context, vcontext);
-	setup_debug_messenger();
-	gpu.create_surface(window);
-	gpu.pick_physical_device(vcontext);
-	gpu.create_logical_device(gpu.surface);
-	gpu.init_vma();
-}
-
-void Velo::init_swapchain() {
-	swapchain.create(window, gpu);
-	swapchain.create_image_views(gpu.device);
-}
-void Velo::init_commands() {
-	gpu.create_command_pool();
-	create_command_buffer();
-}
-void Velo::init_descriptors() {
-	create_descriptor_set_layout();
-	create_descriptor_pools();
-	create_descriptor_sets();
-}
-
 void Velo::init_default_data() {
 	create_texture_sampler();
-	if (vcontext.enabled_codam) {
+	if (config.enabled_codam) {
 		create_material_images();
 		create_texture_material_views();
 		load_model_per_face_material();
@@ -391,11 +360,9 @@ void Velo::init_default_data() {
 		create_texture_image_view();
 		load_model();
 	}
-	swapchain.create_depth_resources(gpu);
 	create_vertex_buffer();
 	create_index_buffer();
-	create_uniform_buffers();
-	if (vcontext.enabled_codam) {
+	if (config.enabled_codam) {
 		create_material_index_buffer();
 	} else {
 		// yes this is ugly. just temporary for codam
@@ -454,7 +421,7 @@ void Velo::create_texture_material_views() {
 	writes.reserve(imageInfos.size());
 	for (std::uint32_t i = 0; i < imageInfos.size(); i++) {
 		writes.push_back({
-			.dstSet = *descriptorSets,
+			.dstSet = *descriptors.set,
 			.dstBinding = 1,
 			.dstArrayElement = i,
 			.descriptorCount = 1,
@@ -534,7 +501,7 @@ void Velo::create_dummy_material_index_buffer() {
         .range = buffSize
     };
     vk::WriteDescriptorSet writeSet {
-        .dstSet = *descriptorSets,
+        .dstSet = *descriptors.set,
         .dstBinding = 2,
         .dstArrayElement = 0,
         .descriptorCount = 1,
@@ -544,8 +511,91 @@ void Velo::create_dummy_material_index_buffer() {
     gpu.device.updateDescriptorSets(writeSet, nullptr);
 }
 
+void FrameContext::create(GpuContext& gpu, vk::DescriptorSet dstSet, std::uint32_t frameIdx) {
+	vk::CommandBufferAllocateInfo allocInfo {
+		.commandPool = *gpu.cmdPool,
+		.level = vk::CommandBufferLevel::ePrimary,
+		.commandBufferCount = 1
+	};
+
+	auto cmdBuffExpected = gpu.device.allocateCommandBuffers(allocInfo);
+	if (!cmdBuffExpected.has_value()) {
+		handle_error("Failed to allocate cmd buffer", cmdBuffExpected.result);
+	}
+	cmdBuffer = std::move(cmdBuffExpected->front());
+
+	auto acquireSemExpected = gpu.device.createSemaphore(vk::SemaphoreCreateInfo{});
+	if (!acquireSemExpected.has_value()) {
+		handle_error("Failed to create render semaphore", acquireSemExpected.result);
+	}
+	acquireSem = std::move(*acquireSemExpected);
+
+	uniformBuffer = VmaBuffer(gpu.allocator, sizeof(UniformBufferObject), vk::BufferUsageFlagBits::eUniformBuffer, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
+	uniformBufferMapped = uniformBuffer.mapped_data();
+
+	vk::DescriptorBufferInfo buffInfo {
+		.buffer = uniformBuffer.buffer(),
+		.offset = 0,
+		.range = sizeof(UniformBufferObject)
+	};
+	vk::WriteDescriptorSet writes {
+		.dstSet = dstSet,
+		.dstBinding = 0,
+		.dstArrayElement = frameIdx,
+		.descriptorCount = 1,
+		.descriptorType = vk::DescriptorType::eUniformBuffer,
+		.pBufferInfo = &buffInfo
+	};
+	gpu.device.updateDescriptorSets(writes, nullptr);
+}
+
+void SyncContext::create(vk::raii::Device& device, std::uint32_t swapchainImgCount) {
+	presentSems.clear();
+	vk::SemaphoreCreateInfo timeSemInfo = {};
+	vk::SemaphoreTypeCreateInfoKHR typepInfo = {
+		.semaphoreType = vk::SemaphoreTypeKHR::eTimeline,
+		.initialValue = 0
+	};
+	timeSemInfo.pNext = &typepInfo;
+	auto timeSemExpected = device.createSemaphore(timeSemInfo);
+	if (!timeSemExpected.has_value()) {
+		handle_error("Failed to create timeline semaphore", timeSemExpected.result);
+	}
+	timelineSem = std::move(*timeSemExpected);
+
+	for (uint32_t i = 0; i < swapchainImgCount; i++) {
+		presentSems.push_back(device.createSemaphore({}).value);
+	}
+}
+
+void SyncContext::wait_for_frame(vk::raii::Device& device, std::uint64_t frameCount) const {
+	uint64_t waitValue = 0;
+	if (frameCount > MAX_FRAMES_IN_FLIGHT) {
+		waitValue = frameCount - MAX_FRAMES_IN_FLIGHT;
+	}
+	vk::SemaphoreWaitInfo waitInfo = {
+		.semaphoreCount = 1,
+		.pSemaphores = &*timelineSem,
+		.pValues = &waitValue
+	};
+	auto waitExpected = device.waitSemaphores(waitInfo, UINT64_MAX);
+	if (waitExpected != vk::Result::eSuccess) {
+		handle_error("Failed to wait for semaphore", waitExpected);
+	}
+}
+
+void SyncContext::signal_timeline(vk::raii::Device& device, std::uint64_t value) const {
+	// dummy signal (yay documentation)
+	vk::SemaphoreSignalInfo signalInfo {
+		.semaphore = *timelineSem,
+		.value = value
+	};
+	device.signalSemaphore(signalInfo);
+}
+
 // util
 // unused for now
 // static bool has_stencil_component(vk::Format fmt) {
 // 	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
 // }
+//

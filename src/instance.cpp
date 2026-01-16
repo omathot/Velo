@@ -8,7 +8,7 @@ import vulkan_hpp;
 
 void Velo::init_window() {
 	// optional for renderdoc debugging
-	if (vcontext.enabled_x11)
+	if (config.enabled_x11)
 		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API,  GLFW_NO_API);

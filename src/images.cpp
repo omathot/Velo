@@ -104,7 +104,7 @@ void Velo::create_texture_image_view() {
 	// could just do like for ubos
 	// make views and arrayElem = i
 	vk::WriteDescriptorSet writes {
-		.dstSet = *descriptorSets,
+		.dstSet = *descriptors.set,
 		.dstBinding = 1,
 		.dstArrayElement = 0,
 		.descriptorCount = 1,

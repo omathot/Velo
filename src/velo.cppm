@@ -199,10 +199,11 @@ struct GpuContext {
 	// void end_immediate(vk::raii::CommandBuffer& cmd);
 	vk::raii::CommandBuffer begin_single_time_commands();
 	void end_single_time_commands(vk::raii::CommandBuffer& cmdBuff) const;
+	void copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size);
 
-	void create_instance(vk::raii::Context& context, VeloContext& vcontext);
+	void create_instance(vk::raii::Context& context, VeloContext& config);
 	void create_surface(GLFWwindow* window);
-	void pick_physical_device(VeloContext& vcontext);
+	void pick_physical_device(VeloContext& config);
 	std::tuple<std::uint32_t, std::uint32_t> find_queue_families(const std::vector<vk::QueueFamilyProperties>& qfps, vk::raii::SurfaceKHR& surface) const;
 	void create_logical_device(vk::raii::SurfaceKHR& surface);
 	void init_vma();
@@ -226,30 +227,54 @@ struct SwapchainContext {
 	static vk::Format find_depth_format(vk::raii::PhysicalDevice& physicalDevice);
 };
 
+struct DescriptorContext {
+	vk::raii::DescriptorSetLayout layout{nullptr};
+	vk::raii::DescriptorPool pool{nullptr};
+	vk::raii::DescriptorSet set{nullptr};
+
+	void create_layout(vk::raii::Device& device);
+	void create_pool(vk::raii::Device& device);
+	void create_set(vk::raii::Device& device);
+};
+
+struct FrameContext {
+	vk::raii::CommandBuffer cmdBuffer{nullptr};
+	/// per frame in flight
+	vk::raii::Semaphore acquireSem{nullptr};
+
+	VmaBuffer uniformBuffer;
+	void* uniformBufferMapped{};
+
+	void create(GpuContext& gpu, vk::DescriptorSet dstSet, std::uint32_t frameIdx);
+};
+
+struct SyncContext {
+	vk::raii::Semaphore timelineSem{nullptr};
+	/// per swapchain image
+	std::vector<vk::raii::Semaphore> presentSems;
+
+	void create(vk::raii::Device& device, std::uint32_t swapchainImgCount);
+	void wait_for_frame(vk::raii::Device& device, std::uint64_t frameCount) const;
+	void signal_timeline(vk::raii::Device& device, std::uint64_t value) const;
+};
+
 export class Velo {
 public:
 	Velo();
 	void run();
 
 private:
-	VeloContext vcontext;
+	VeloContext config;
 	GLFWwindow* window{};
 	vk::raii::Context context;
 	GpuContext gpu;
 	SwapchainContext swapchain;
+	DescriptorContext descriptors;
 	vk::raii::DebugUtilsMessengerEXT debugMessenger{nullptr};
 
-	std::vector<vk::raii::CommandBuffer> cmdBuffers;
-
-	vk::raii::DescriptorSetLayout descriptorSetLayout{nullptr};
-	vk::raii::DescriptorPool descriptorPool{nullptr};
-	vk::raii::DescriptorSet descriptorSets{nullptr};
 	vk::raii::PipelineLayout pipelineLayout{nullptr};
 	vk::raii::Pipeline graphicsPipeline{nullptr};
-
-	vk::raii::Semaphore timelineSem{nullptr};
-	std::vector<vk::raii::Semaphore> presentCompleteSems;
-	std::vector<vk::raii::Semaphore> renderDoneSems;
+	SyncContext sync;
 
 	std::vector<Vertex> vertices;
 	std::vector<std::uint32_t> indices;
@@ -257,12 +282,12 @@ private:
 	VmaBuffer indexBuff;
 	VmaBuffer materialIdxBuff;
 
-	std::vector<VmaBuffer> uniformBuffs;
-	std::vector<void*> uniformBuffsMapped;
 	VmaImage textureImage;
 	std::uint32_t mipLvls{};
 	vk::raii::ImageView textureImageView{nullptr};
 	vk::raii::Sampler textureSampler{nullptr};
+
+	std::array<FrameContext, MAX_FRAMES_IN_FLIGHT> frames;
 
 	std::vector<VmaImage> materialImages;
 	std::vector<vk::raii::ImageView> materialImageViews;
@@ -288,16 +313,11 @@ private:
 	void main_loop();
 	void cleanup();
 
-	void init_env();
-	void init_swapchain();
-	void init_commands();
-	void init_descriptors();
 	void init_default_data();
 
 	void setup_debug_messenger();
 	void create_graphics_pipeline();
 	[[nodiscard]] vk::raii::ShaderModule create_shader_module(const std::vector<char>& code) const;
-	void create_command_buffer();
 	void record_command_buffer(std::uint32_t imgIdx);
 	// img transitions
 	void transition_image_layout(
@@ -311,23 +331,16 @@ private:
 		vk::ImageAspectFlags aspectFlags
 	);
 	void transition_image_texture_layout(VmaImage& img, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, std::uint32_t mips);
-	void create_sync_objects();
-	void create_buffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, VmaBuffer& buff, vk::raii::DeviceMemory& buffMem);
 	void create_vertex_buffer();
 	void create_index_buffer();
-	[[nodiscard]] std::uint32_t find_memory_type(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
-	void copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size);
-	void create_descriptor_set_layout();
-	void create_uniform_buffers();
-	void update_uniform_buffers(std::uint32_t currImg);
-	void create_descriptor_pools();
-	void create_descriptor_sets();
+	void update_uniform_buffers();
+
+	// init default data
 	void create_texture_image();
 	void copy_buffer_to_image(const VmaBuffer& buff, VmaImage& img, std::uint32_t width, std::uint32_t height);
 	void create_texture_image_view();
 	void create_texture_sampler();
 	void load_model();
-	void load_material_textures(const std::vector<tinyobj::material_t>& materials);
 	void create_material_images();
 	void create_texture_material_views();
 	void load_model_per_face_material();
@@ -357,6 +370,9 @@ private:
 		auto* app = reinterpret_cast<Velo*>(glfwGetWindowUserPointer(window));
 		app->frameBuffResized = true;
 	}
+
+	// unused
+	[[nodiscard]] std::uint32_t find_memory_type(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 };
 
 

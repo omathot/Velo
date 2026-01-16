@@ -6,8 +6,8 @@ module;
 
 module velo;
 import std;
-static std::vector<char const*> get_required_extensions(vk::raii::Context& context, VeloContext& vcontext);
-static std::vector<char const*> get_required_layers(vk::raii::Context& context, VeloContext& vcontext);
+static std::vector<char const*> get_required_extensions(vk::raii::Context& context, VeloContext& config);
+static std::vector<char const*> get_required_layers(vk::raii::Context& context, VeloContext& config);
 /*
 	"All the helper functions that submit commands so far have been set up to execute synchronously by
 	waiting for the queue to become idle. For practical applications it is recommended to combine these operations
@@ -46,6 +46,12 @@ void GpuContext::end_single_time_commands(vk::raii::CommandBuffer& cmdBuff)  con
 	};
 	graphicsQueue.submit(submitInfo);
 	graphicsQueue.waitIdle();
+}
+
+void GpuContext::copy_buffer(VmaBuffer& srcBuff, VmaBuffer& dstBuff, vk::DeviceSize size) {
+	auto cmdBuff = begin_single_time_commands();
+	cmdBuff.copyBuffer(srcBuff.buffer(), dstBuff.buffer(), vk::BufferCopy(0, 0, size));
+	end_single_time_commands(cmdBuff);
 }
 
 void GpuContext::create_logical_device(vk::raii::SurfaceKHR& _surface) {
@@ -125,7 +131,7 @@ void GpuContext::create_logical_device(vk::raii::SurfaceKHR& _surface) {
 	presentQueue = device.getQueue(presentIdx, 0);
 }
 
-void GpuContext::create_instance(vk::raii::Context& context, VeloContext& vcontext) {
+void GpuContext::create_instance(vk::raii::Context& context, VeloContext& config) {
 	constexpr vk::ApplicationInfo appInfo {
 		.pApplicationName = "LVK",
 		.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
@@ -134,8 +140,8 @@ void GpuContext::create_instance(vk::raii::Context& context, VeloContext& vconte
 		.apiVersion = vk::ApiVersion14
 	};
 
-	auto requiredLayers = get_required_layers(context, vcontext);
-	auto requiredExtensions = get_required_extensions(context, vcontext);
+	auto requiredLayers = get_required_layers(context, config);
+	auto requiredExtensions = get_required_extensions(context, config);
 
 	vk::InstanceCreateInfo createInfo{
 		.pApplicationInfo = &appInfo,
@@ -151,7 +157,7 @@ void GpuContext::create_instance(vk::raii::Context& context, VeloContext& vconte
 	instance = std::move(*instExpected);
 }
 
-void GpuContext::pick_physical_device(VeloContext& vcontext) {
+void GpuContext::pick_physical_device(VeloContext& config) {
 	auto devicesExpected = instance.enumeratePhysicalDevices();
 	if (!devicesExpected.has_value()) {
 		handle_error("Failed to request available physical devices", devicesExpected.result);
@@ -201,18 +207,18 @@ void GpuContext::pick_physical_device(VeloContext& vcontext) {
 
 	if (candidates.rbegin()->first > 0) {
 		physicalDevice = std::move(candidates.rbegin()->second);
-		vcontext.deviceProperties = physicalDevice.getProperties();
-		vcontext.deviceFeatures = physicalDevice.getFeatures();
-		if (vcontext.fetch_infos) {
-			vcontext.gather_features_info();
+		config.deviceProperties = physicalDevice.getProperties();
+		config.deviceFeatures = physicalDevice.getFeatures();
+		if (config.fetch_infos) {
+			config.gather_features_info();
 		}
-		std::cout << "Picked physical device " << vcontext.deviceProperties.deviceName << '\n';
+		std::cout << "Picked physical device " << config.deviceProperties.deviceName << '\n';
 	} else {
 		throw std::runtime_error("Failed to find suitable GPU");
 	}
 }
 
-static std::vector<char const*> get_required_extensions(vk::raii::Context& context, VeloContext& vcontext) {
+static std::vector<char const*> get_required_extensions(vk::raii::Context& context, VeloContext& config) {
 	std::vector<char const*> requiredExtensions;
 	// VK extensions
 	auto propsExpected = context.enumerateInstanceExtensionProperties();
@@ -220,15 +226,15 @@ static std::vector<char const*> get_required_extensions(vk::raii::Context& conte
 		handle_error("Failed to enumerate instance extension properties", propsExpected.result);
 	}
 	auto extensionProperties = *propsExpected;
-	vcontext.extensionProperties = extensionProperties;
+	config.extensionProperties = extensionProperties;
 	// GLFW extensions
 	std::uint32_t glfwExtensionsCount = 0;
 	auto* glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 	std::span glfwExtensionsSpan(glfwExtensions, glfwExtensionsCount);
-	vcontext.requiredGlfwExtensions = glfwExtensions;
-	vcontext.glfwCount = glfwExtensionsCount;
-	if (vcontext.fetch_infos) {
-		vcontext.gather_extensions_info();
+	config.requiredGlfwExtensions = glfwExtensions;
+	config.glfwCount = glfwExtensionsCount;
+	if (config.fetch_infos) {
+		config.gather_extensions_info();
 	}
 	// GLFW check
 	bool extensionsSupported = std::ranges::all_of(glfwExtensionsSpan, [&extensionProperties](auto const& glfwExtension) {
@@ -248,7 +254,7 @@ static std::vector<char const*> get_required_extensions(vk::raii::Context& conte
 	return requiredExtensions;
 }
 
-static std::vector<char const*> get_required_layers(vk::raii::Context& context, VeloContext& vcontext) {
+static std::vector<char const*> get_required_layers(vk::raii::Context& context, VeloContext& config) {
 	// required layers
 	std::vector<char const*> requiredLayers;
 	if (enableValidationLayers) {
@@ -260,9 +266,9 @@ static std::vector<char const*> get_required_layers(vk::raii::Context& context, 
 		handle_error("Could not fetch available vk layers", layersExpected.result);
 	}
 	auto layerProperties = *layersExpected;
-	vcontext.layerProperties = layerProperties;
-	if (vcontext.fetch_infos) {
-		vcontext.gather_layers_info();
+	config.layerProperties = layerProperties;
+	if (config.fetch_infos) {
+		config.gather_layers_info();
 	}
 	// layers check
 	bool layersSupported = std::ranges::all_of(requiredLayers, [&layerProperties](auto const& requiredLayer) {
@@ -358,3 +364,4 @@ void GpuContext::init_vma() {
 
 	vmaCreateAllocator(&allocatorInfo, &allocator);
 }
+

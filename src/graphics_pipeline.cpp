@@ -84,7 +84,7 @@ void Velo::create_graphics_pipeline() {
 	};
 	vk::PipelineLayoutCreateInfo layoutInfo{
 		.setLayoutCount = 1,
-		.pSetLayouts = &*descriptorSetLayout,
+		.pSetLayouts = &*descriptors.layout,
 		.pushConstantRangeCount = 1,
 		.pPushConstantRanges = &pcRange
 	};
@@ -137,7 +137,7 @@ vk::raii::ShaderModule Velo::create_shader_module(const std::vector<char>& code)
 	return std::move(*moduleExpected);
 }
 
-void Velo::create_descriptor_set_layout() {
+void DescriptorContext::create_layout(vk::raii::Device& device) {
 	vk::DescriptorSetLayoutBinding uniformBinding {
 		.binding = 0,
 		.descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -174,14 +174,14 @@ void Velo::create_descriptor_set_layout() {
 		.pBindings = bindings.data()
 	};
 
-	auto layoutExpected = gpu.device.createDescriptorSetLayout(layoutInfo);
+	auto layoutExpected = device.createDescriptorSetLayout(layoutInfo);
 	if (!layoutExpected.has_value()) {
 		handle_error("Failed to create descriptor set layout", layoutExpected.result);
 	}
-	descriptorSetLayout = std::move(*layoutExpected);
+	layout = std::move(*layoutExpected);
 }
 
-void Velo::create_descriptor_pools() {
+void DescriptorContext::create_pool(vk::raii::Device& device) {
 	std::array<vk::DescriptorPoolSize, 3> poolSizes = {{
 		{.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = MAX_OBJECTS},
 		{.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = MAX_TEXTURES},
@@ -193,25 +193,25 @@ void Velo::create_descriptor_pools() {
 		.poolSizeCount = static_cast<std::uint32_t>(poolSizes.size()),
 		.pPoolSizes = poolSizes.data()
 	};
-	auto poolExpected = gpu.device.createDescriptorPool(poolInfo);
+	auto poolExpected = device.createDescriptorPool(poolInfo);
 	if (!poolExpected.has_value()) {
 		handle_error("Failed to create descriptor pool", poolExpected.result);
 	}
-	descriptorPool = std::move(*poolExpected);
+	pool = std::move(*poolExpected);
 }
 
-void Velo::create_descriptor_sets() {
-	descriptorSets.clear();
+void DescriptorContext::create_set(vk::raii::Device& device) {
+	set.clear();
 	vk::DescriptorSetAllocateInfo allocInfo {
-		.descriptorPool = descriptorPool,
+		.descriptorPool = pool,
 		.descriptorSetCount = 1,
-		.pSetLayouts = &*descriptorSetLayout
+		.pSetLayouts = &*layout
 	};
-	auto setExpected = gpu.device.allocateDescriptorSets(allocInfo);
+	auto setExpected = device.allocateDescriptorSets(allocInfo);
 	if (!setExpected.has_value()) {
 		handle_error("Failed to allocate descriptor set", setExpected.result);
 	}
-	descriptorSets = std::move(setExpected->front());
+	set = std::move(setExpected->front());
 }
 
 void handle_error(const char* msg, vk::Result err) {
