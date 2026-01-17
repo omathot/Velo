@@ -11,3 +11,8 @@ std::uint32_t Velo::find_memory_type(std::uint32_t typeFilter, vk::MemoryPropert
 	throw std::runtime_error("Failed to find a suitable memory type");
 	std::unreachable();
 }
+
+// static bool has_stencil_component(vk::Format fmt) {
+// 	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
+// }
+

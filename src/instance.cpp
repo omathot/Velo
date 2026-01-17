@@ -12,14 +12,11 @@ void Velo::init_window() {
 		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API,  GLFW_NO_API);
-	window = glfwCreateWindow(WIDTH, HEIGHT, "LVK", nullptr, nullptr);
+	window = glfwCreateWindow(WIDTH, HEIGHT, "Velo", nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, frameBufferResizeCb);
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
-	if (glfwRawMouseMotionSupported()) {
-		// glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	}
 }
 void Velo::setup_debug_messenger() {
 	if (!enableValidationLayers) return;

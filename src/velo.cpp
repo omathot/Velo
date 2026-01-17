@@ -45,13 +45,13 @@ void Velo::init_vulkan() {
 	swapchain.create_image_views(gpu.device);
 	swapchain.create_depth_resources(gpu);
 
-	sync.create(gpu.device, static_cast<uint32_t>(swapchain.images.size()));
+	sync.create(gpu.device, static_cast<std::uint32_t>(swapchain.images.size()));
 
 	descriptors.create_layout(gpu.device);
 	descriptors.create_pool(gpu.device);
 	descriptors.create_set(gpu.device);
 
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	for (std::uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		frames[i].create(gpu, *descriptors.set, i);
 	}
 
@@ -137,7 +137,6 @@ void Velo::draw_frame() {
 	FrameContext& frame = frames[frameIdx];
 	sync.wait_for_frame(gpu.device, timelineValue);
 
-	// check resize before acquiring (diff from tutorial because timeline sem instead of fences they can just reset)
 	if (frameBuffResized) {
 		frameBuffResized = false;
 		swapchain.recreate(window, gpu);
@@ -365,7 +364,7 @@ void Velo::init_default_data() {
 	if (config.enabled_codam) {
 		create_material_index_buffer();
 	} else {
-		// yes this is ugly. just temporary for codam
+		// yes this is ugly. temporary
 		create_dummy_material_index_buffer();
 	}
 }
@@ -395,8 +394,7 @@ void Velo::create_material_images() {
 		vmaUnmapMemory(gpu.allocator, stagingBuff.allocation());
 
 		materialImages.emplace_back(gpu.allocator, static_cast<std::uint32_t>(texW), static_cast<std::uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT);
-		// materialImages.push_back(VmaImage(allocator, static_cast<std::uint32_t>(texW), static_cast<std::uint32_t>(texH), 1, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Srgb, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT));
-		std::println("Successfully created CODAM image");
+		std::println("Successfully created material image");
 
 		transition_image_texture_layout(materialImages[i], vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, 1);
 		copy_buffer_to_image(stagingBuff, materialImages[i], static_cast<std::uint32_t>(texW), static_cast<std::uint32_t>(texH));
@@ -592,10 +590,3 @@ void SyncContext::signal_timeline(vk::raii::Device& device, std::uint64_t value)
 	};
 	device.signalSemaphore(signalInfo);
 }
-
-// util
-// unused for now
-// static bool has_stencil_component(vk::Format fmt) {
-// 	return fmt == vk::Format::eD32SfloatS8Uint || fmt == vk::Format::eD24UnormS8Uint;
-// }
-//

@@ -78,9 +78,9 @@ void Velo::update_uniform_buffers() {
 		glm::vec3(0.0f, 1.0f, 0.0f) // axis to rotate around
 	);
 	ubo.view = lookAt(
-		glm::vec3(0.0f, 3.0f, 7.0f), // camera pos
+		glm::vec3(0.0f, 3.0f, 7.0f), // view pos
 		glm::vec3(0.0f, 1.0f, 0.0f), // target
-		glm::vec3(0.0f, 1.0f, 0.0f)  // X/Y/Z is up
+		glm::vec3(0.0f, 1.0f, 0.0f)  // X/Y/Z up
 	);
 	// TODO: figure this one out
 	ubo.proj = glm::perspective(

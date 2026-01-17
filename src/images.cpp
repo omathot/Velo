@@ -35,8 +35,7 @@ void Velo::create_texture_image() {
 		throw std::runtime_error("Failed to load pixels from texture");
 	}
 	vk::DeviceSize imgSize = static_cast<vk::DeviceSize>(texWidth * texHeight) * 4; // 4 bytes per pixel
-	// mipLvls = static_cast<std::uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
-	mipLvls = 1;
+	mipLvls = static_cast<std::uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
 	VmaBuffer stagingBuffer = VmaBuffer(gpu.allocator, imgSize, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 	void* data = nullptr;

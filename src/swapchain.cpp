@@ -68,8 +68,6 @@ void SwapchainContext::create(GLFWwindow* window, GpuContext& gpu) {
 	images = *imgsExpected;
 	extent = tmpExtent;
 	format = fmt.format;
-
-	std::cout << "Successfully created swapchain and acquired swapchain images\n";
 }
 
 static vk::Extent2D choose_swap_extent(GLFWwindow* window, const vk::SurfaceCapabilitiesKHR& capabilities) {
@@ -91,11 +89,8 @@ void SwapchainContext::create_image_views(vk::raii::Device& device) {
 		auto imgView = create_image_view(device, swapchainImg, format, vk::ImageAspectFlagBits::eColor, 1);
 		imageViews.emplace_back(std::move(imgView));
 	}
-	std::cout << "Successfully created image views, imgViews vec size: " << imageViews.size() << '\n';
 }
 
-
-// utils
 static vk::SurfaceFormatKHR choose_swap_surface_format(const std::vector<vk::SurfaceFormatKHR>& availableFormats) {
 	// srgb cause most common and best
 	for (const auto& format: availableFormats) {

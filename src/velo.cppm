@@ -33,7 +33,6 @@ const std::vector<const char*> requiredDeviceExtensions = {
 };
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-// for bindless UBOs
 constexpr int MAX_OBJECTS = 100;
 constexpr int MAX_TEXTURES = 100;
 constexpr int MAX_MATERIALS = 4;
@@ -375,6 +374,25 @@ private:
 	[[nodiscard]] std::uint32_t find_memory_type(std::uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
 };
 
+// we hook in to quiet lsan leaks log for libraries, want to see leaks for my code
+// this may grow out of control for diff platforms/devices etc, may need to just quiet leaks alltogether
+extern "C" const char* __lsan_default_suppressions() { // NOLINT
+	return
+		// well known leaks in WayLand
+		"leak:libfontconfig\n"
+		"leak:libgtk\n"
+		"leak:libpango\n"
+		"leak:libglfw\n"
+		"leak:libdecor\n"
+		"leak:libglib\n"
+
+		// specific to 5070 vk driver
+		"leak:libvulkan\n"
+		"leak:vkCreateInstance\n"
+		"leak:vkCreateDevice\n"
+		"leak:__pthread_once\n";
+}
+
 
 // temp utils
 std::vector<char> read_file(const std::string& filename) {
@@ -390,7 +408,6 @@ std::vector<char> read_file(const std::string& filename) {
 	file.close();
 	return buffer;
 }
-// bool has_stencil_component(vk::Format fmt);
 void handle_error(const char* msg, vk::Result error);
 /// vector must be ordered from most desirable to least desirable
 vk::Format find_supported_format(vk::raii::PhysicalDevice& physicalDevice, const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);

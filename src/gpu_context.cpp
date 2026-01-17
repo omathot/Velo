@@ -133,7 +133,7 @@ void GpuContext::create_logical_device(vk::raii::SurfaceKHR& _surface) {
 
 void GpuContext::create_instance(vk::raii::Context& context, VeloContext& config) {
 	constexpr vk::ApplicationInfo appInfo {
-		.pApplicationName = "LVK",
+		.pApplicationName = "Velo",
 		.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
 		.pEngineName = "No Engine",
 		.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0),
