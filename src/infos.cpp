@@ -1,6 +1,3 @@
-module;
-#include <print>
-
 module velo;
 import std;
 bool VeloContext::is_info_gathered() {
@@ -45,7 +42,7 @@ void VeloContext::gather_features_info() {
 		// we are treating vk::PhysicalDeviceFatures as an array of vk::Bool32
 		// the struct is guaranteed to be a contiguous sequence of Bool32s with no padding
 		vk::Bool32* pFeatures = reinterpret_cast<vk::Bool32*>(&deviceFeatures);
-		for (size_t i = 0; i < 55; i++) {
+		for (std::size_t i = 0; i < 55; i++) {
 		    featureFile << allNames.at(i) << ": " << (pFeatures[i] ? "YES" : "NO") << "\n";
 		}
 		featureFile.close();
